@@ -4,12 +4,16 @@ import laboratorioxyz.com.ZoneControl.model.entity.Department;
 import laboratorioxyz.com.ZoneControl.model.entity.Office;
 import laboratorioxyz.com.ZoneControl.model.entity.ProductionArea;
 import laboratorioxyz.com.ZoneControl.model.enums.ContentSection;
+import laboratorioxyz.com.ZoneControl.model.enums.DocumentType;
+import laboratorioxyz.com.ZoneControl.model.enums.EmployeeStatus;
 import laboratorioxyz.com.ZoneControl.model.enums.Role;
 import laboratorioxyz.com.ZoneControl.model.enums.UserStatus;
 import laboratorioxyz.com.ZoneControl.model.repository.DepartmentRepository;
 import laboratorioxyz.com.ZoneControl.model.repository.ProductionAreaRepository;
 import laboratorioxyz.com.ZoneControl.modulo_autenticacion.model.User;
 import laboratorioxyz.com.ZoneControl.modulo_autenticacion.repository.UserRepository;
+import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.model.Employee;
+import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.repository.EmployeeRepository;
 import laboratorioxyz.com.ZoneControl.modulo_publico.model.ProductCatalog;
 import laboratorioxyz.com.ZoneControl.modulo_publico.model.PublicContent;
 import laboratorioxyz.com.ZoneControl.modulo_publico.repository.OfficeRepository;
@@ -21,6 +25,19 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
+/**
+ * Inicializador de datos semilla para la base de datos.
+ * Se ejecuta al arrancar la aplicación y siembra datos iniciales
+ * solo si las tablas correspondientes están vacías.
+ *
+ * Incluye:
+ * - 6 departamentos de producción
+ * - 5 áreas restringidas de producción
+ * - 1 usuario administrador por defecto
+ * - Contenido público de ejemplo (misión, visión, contacto)
+ * - 2 sedes físicas
+ * - 2 productos del catálogo
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -29,11 +46,18 @@ public class DataInitializer implements CommandLineRunner {
     private final DepartmentRepository departmentRepository;
     private final ProductionAreaRepository productionAreaRepository;
     private final UserRepository userRepository;
+    private final EmployeeRepository employeeRepository;
     private final PublicContentRepository publicContentRepository;
     private final OfficeRepository officeRepository;
     private final ProductCatalogRepository productCatalogRepository;
     private final BCryptPasswordEncoder passwordEncoder;
 
+    private Department adminDepartment;
+
+    /**
+     * Cada método de seed verifica si ya existen datos antes de insertar,
+     * permitiendo reinicios del servidor sin duplicar registros.
+     */
     @Override
     public void run(String... args) {
         log.info("Seeding initial data...");
@@ -48,6 +72,7 @@ public class DataInitializer implements CommandLineRunner {
 
     private void seedDepartments() {
         if (departmentRepository.count() > 0) {
+            adminDepartment = departmentRepository.findByName("Control de Calidad").orElseThrow();
             log.info("Departments already exist — skipping");
             return;
         }
@@ -65,6 +90,7 @@ public class DataInitializer implements CommandLineRunner {
                     .name(name)
                     .build());
         }
+        adminDepartment = departmentRepository.findByName("Control de Calidad").orElseThrow();
         log.info("Seeded {} departments", names.length);
     }
 
@@ -89,11 +115,28 @@ public class DataInitializer implements CommandLineRunner {
         log.info("Seeded {} production areas", names.length);
     }
 
+    /**
+     * Crea el empleado administrador y su usuario de sistema asociado.
+     * Primero se crea el Employee (EMP-000001) y luego el User vinculado,
+     * cumpliendo la regla @OneToOne obligatoria (todo User debe tener un Employee).
+     */
     private void seedAdminUser() {
         if (userRepository.count() > 0) {
             log.info("Users already exist — skipping");
             return;
         }
+        Employee adminEmployee = Employee.builder()
+                .employeeCode("EMP-000001")
+                .documentType(DocumentType.CC)
+                .documentNumber("0000000001")
+                .firstName("Admin")
+                .lastName("ZoneControl")
+                .position("Administrador del Sistema")
+                .department(adminDepartment)
+                .status(EmployeeStatus.ACTIVO)
+                .build();
+        adminEmployee = employeeRepository.save(adminEmployee);
+
         User admin = User.builder()
                 .firstName("Admin")
                 .lastName("ZoneControl")
@@ -102,6 +145,7 @@ public class DataInitializer implements CommandLineRunner {
                 .role(Role.ADMIN)
                 .status(UserStatus.ACTIVO)
                 .requirePasswordChange(false)
+                .employee(adminEmployee)
                 .build();
 
         userRepository.save(admin);
