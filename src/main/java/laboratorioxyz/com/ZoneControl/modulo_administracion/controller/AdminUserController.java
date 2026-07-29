@@ -1,21 +1,15 @@
 package laboratorioxyz.com.ZoneControl.modulo_administracion.controller;
 
 import jakarta.validation.Valid;
-import laboratorioxyz.com.ZoneControl.model.enums.UserStatus;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import laboratorioxyz.com.ZoneControl.modulo_autenticacion.dto.CreateUserRequest;
-import laboratorioxyz.com.ZoneControl.modulo_autenticacion.model.User;
-import laboratorioxyz.com.ZoneControl.modulo_autenticacion.repository.UserRepository;
-import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.model.Employee;
-import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.repository.EmployeeRepository;
+import laboratorioxyz.com.ZoneControl.modulo_autenticacion.dto.UpdateUserRequest;
+import laboratorioxyz.com.ZoneControl.modulo_autenticacion.dto.UserResponse;
+import laboratorioxyz.com.ZoneControl.modulo_autenticacion.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 import java.util.UUID;
@@ -25,39 +19,33 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AdminUserController {
 
-    private final UserRepository userRepository;
-    private final EmployeeRepository employeeRepository;
-    private final BCryptPasswordEncoder passwordEncoder;
+    private final UserService userService;
 
     @PostMapping
-    public ResponseEntity<Map<String, UUID>> create(@Valid @RequestBody CreateUserRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "El email ya está registrado");
-        }
+    public ResponseEntity<UserResponse> create(@Valid @RequestBody CreateUserRequest request) {
+        UserResponse response = userService.create(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
 
-        Employee employee = employeeRepository.findById(request.getEmployeeId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Empleado no encontrado"));
+    @PutMapping("/{id}")
+    public ResponseEntity<UserResponse> update(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateUserRequest request) {
+        UserResponse response = userService.update(id, request);
+        return ResponseEntity.ok(response);
+    }
 
-        if (userRepository.findByEmployee_Id(request.getEmployeeId()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "El empleado ya tiene un usuario de sistema asociado");
-        }
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<UserResponse> updateStatus(
+            @PathVariable UUID id,
+            @RequestBody Map<String, Status> body) {
+        UserResponse response = userService.updateStatus(id, body.get("status"));
+        return ResponseEntity.ok(response);
+    }
 
-        User user = User.builder()
-                .firstName(request.getFirstName())
-                .lastName(request.getLastName())
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .role(request.getRole())
-                .status(UserStatus.ACTIVO)
-                .requirePasswordChange(true)
-                .employee(employee)
-                .build();
-
-        user = userRepository.save(user);
-
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of("id", user.getId()));
+    @PostMapping("/{id}/reset-password")
+    public ResponseEntity<Map<String, String>> resetPassword(@PathVariable UUID id) {
+        Map<String, String> response = userService.resetPassword(id);
+        return ResponseEntity.ok(response);
     }
 }

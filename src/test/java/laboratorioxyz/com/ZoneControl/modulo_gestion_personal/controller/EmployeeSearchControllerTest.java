@@ -3,7 +3,7 @@ package laboratorioxyz.com.ZoneControl.modulo_gestion_personal.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import laboratorioxyz.com.ZoneControl.model.entity.Department;
 import laboratorioxyz.com.ZoneControl.model.enums.DocumentType;
-import laboratorioxyz.com.ZoneControl.model.enums.EmployeeStatus;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import laboratorioxyz.com.ZoneControl.model.repository.DepartmentRepository;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.dto.RegisterEmployeeRequest;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.dto.UpdateEmployeeRequest;
@@ -56,7 +56,7 @@ class EmployeeSearchControllerTest {
                 .lastName("Mendoza")
                 .position("Técnico")
                 .department(department)
-                .status(EmployeeStatus.ACTIVO)
+                .status(Status.ACTIVO)
                 .build());
     }
 
@@ -101,7 +101,7 @@ class EmployeeSearchControllerTest {
                 .lastName("López")
                 .position("Analista")
                 .department(department)
-                .status(EmployeeStatus.ACTIVO)
+                .status(Status.ACTIVO)
                 .build());
 
         mockMvc.perform(get("/personal")
@@ -123,7 +123,7 @@ class EmployeeSearchControllerTest {
                 .lastName("Ramírez")
                 .position("Técnico")
                 .department(department)
-                .status(EmployeeStatus.ACTIVO)
+                .status(Status.ACTIVO)
                 .build());
         employeeRepository.save(Employee.builder()
                 .employeeCode("EMP-TEST-04")
@@ -133,7 +133,7 @@ class EmployeeSearchControllerTest {
                 .lastName("Pérez")
                 .position("Analista")
                 .department(department)
-                .status(EmployeeStatus.ACTIVO)
+                .status(Status.ACTIVO)
                 .build());
 
         mockMvc.perform(get("/personal")
@@ -191,7 +191,7 @@ class EmployeeSearchControllerTest {
     @Test
     void updateEmployee_statusToInactive_returns200() throws Exception {
         var updateReq = UpdateEmployeeRequest.builder()
-                .status(EmployeeStatus.INACTIVO)
+                .status(Status.INACTIVO)
                 .build();
 
         mockMvc.perform(patch("/personal/{id}", seedEmployee.getId())
@@ -204,7 +204,7 @@ class EmployeeSearchControllerTest {
     @Test
     void updateEmployee_statusToSuspended_returns200() throws Exception {
         var updateReq = UpdateEmployeeRequest.builder()
-                .status(EmployeeStatus.SUSPENDIDO)
+                .status(Status.SUSPENDIDO)
                 .build();
 
         mockMvc.perform(patch("/personal/{id}", seedEmployee.getId())
@@ -237,7 +237,7 @@ class EmployeeSearchControllerTest {
                 .lastName("Empleado")
                 .position("Analista")
                 .department(department)
-                .status(EmployeeStatus.ACTIVO)
+                .status(Status.ACTIVO)
                 .build());
 
         var updateReq = UpdateEmployeeRequest.builder()

@@ -2,6 +2,7 @@ package laboratorioxyz.com.ZoneControl.modulo_publico.service;
 
 import laboratorioxyz.com.ZoneControl.model.entity.Office;
 import laboratorioxyz.com.ZoneControl.model.enums.ContentSection;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import laboratorioxyz.com.ZoneControl.model.repository.ProductionAreaRepository;
 import laboratorioxyz.com.ZoneControl.modulo_publico.dto.CatalogResponse;
 import laboratorioxyz.com.ZoneControl.modulo_publico.dto.ContactResponse;
@@ -78,9 +79,10 @@ public class PublicServiceImpl implements PublicService {
     @Override
     @Cacheable("offices")
     public List<OfficeResponse> getOffices() {
-        List<Office> offices = officeRepository.findAll();
+        List<Office> offices = officeRepository.findByStatus(Status.ACTIVO);
         return offices.stream()
                 .map(o -> OfficeResponse.builder()
+                        .id(o.getId())
                         .name(o.getName())
                         .address(o.getAddress())
                         .openingHours(o.getOpeningHours())
@@ -93,9 +95,10 @@ public class PublicServiceImpl implements PublicService {
     @Override
     @Cacheable("catalog")
     public List<CatalogResponse> getCatalog() {
-        List<ProductCatalog> products = productCatalogRepository.findAll();
+        List<ProductCatalog> products = productCatalogRepository.findByStatus(Status.ACTIVO);
         return products.stream()
                 .map(p -> CatalogResponse.builder()
+                        .id(p.getId())
                         .name(p.getName())
                         .description(p.getDescription())
                         .activeIngredient(p.getActiveIngredient())

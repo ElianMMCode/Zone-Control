@@ -1,7 +1,6 @@
 package laboratorioxyz.com.ZoneControl.modulo_autenticacion.dto;
 
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import laboratorioxyz.com.ZoneControl.model.enums.Role;
 import lombok.AllArgsConstructor;
@@ -9,30 +8,21 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.UUID;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CreateUserRequest {
+public class UpdateUserRequest {
 
-    @NotNull
     @Size(min = 2, max = 35)
     private String firstName;
 
-    @NotNull
     @Size(min = 2, max = 35)
     private String lastName;
 
-    @NotNull
     @Email
     @Size(max = 100)
     private String email;
 
-    @NotNull
     private Role role;
-
-    @NotNull
-    private UUID employeeId;
 }

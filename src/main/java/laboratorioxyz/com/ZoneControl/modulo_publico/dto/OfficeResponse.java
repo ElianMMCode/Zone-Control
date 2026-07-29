@@ -4,15 +4,13 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 
-/**
- * Respuesta individual en GET /public/sedes.
- * Representa una sede física con su ubicación y horario.
- * latitud/longitud permiten integrar mapas en el frontend.
- */
+import java.util.UUID;
+
 @Data
 @AllArgsConstructor
 @Builder
 public class OfficeResponse {
+    private UUID id;
     private String name;
     private String address;
     private String openingHours;

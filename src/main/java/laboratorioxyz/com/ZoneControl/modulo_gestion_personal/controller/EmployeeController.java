@@ -1,7 +1,7 @@
 package laboratorioxyz.com.ZoneControl.modulo_gestion_personal.controller;
 
 import jakarta.validation.Valid;
-import laboratorioxyz.com.ZoneControl.model.enums.EmployeeStatus;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.dto.BulkUploadResult;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.dto.EmployeeSearchResponse;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.dto.RegisterEmployeeRequest;
@@ -52,7 +52,7 @@ public class EmployeeController {
             @RequestParam(required = false) String firstName,
             @RequestParam(required = false) String lastName,
             @RequestParam(required = false) UUID departmentId,
-            @RequestParam(required = false) EmployeeStatus status,
+            @RequestParam(required = false) Status status,
             @PageableDefault(size = 10) Pageable pageable) {
         Page<EmployeeSearchResponse> result = employeeService.search(
                 documentType, documentNumber, firstName, lastName, departmentId, status, pageable);

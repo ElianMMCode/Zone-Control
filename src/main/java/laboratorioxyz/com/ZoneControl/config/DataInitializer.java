@@ -5,9 +5,8 @@ import laboratorioxyz.com.ZoneControl.model.entity.Office;
 import laboratorioxyz.com.ZoneControl.model.entity.ProductionArea;
 import laboratorioxyz.com.ZoneControl.model.enums.ContentSection;
 import laboratorioxyz.com.ZoneControl.model.enums.DocumentType;
-import laboratorioxyz.com.ZoneControl.model.enums.EmployeeStatus;
 import laboratorioxyz.com.ZoneControl.model.enums.Role;
-import laboratorioxyz.com.ZoneControl.model.enums.UserStatus;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import laboratorioxyz.com.ZoneControl.model.repository.DepartmentRepository;
 import laboratorioxyz.com.ZoneControl.model.repository.ProductionAreaRepository;
 import laboratorioxyz.com.ZoneControl.modulo_autenticacion.model.User;
@@ -133,7 +132,7 @@ public class DataInitializer implements CommandLineRunner {
                 .lastName("ZoneControl")
                 .position("Administrador del Sistema")
                 .department(adminDepartment)
-                .status(EmployeeStatus.ACTIVO)
+                .status(Status.ACTIVO)
                 .build();
         adminEmployee = employeeRepository.save(adminEmployee);
 
@@ -143,7 +142,7 @@ public class DataInitializer implements CommandLineRunner {
                 .email("admin@zonecontrol.com")
                 .password(passwordEncoder.encode("Admin123!"))
                 .role(Role.ADMIN)
-                .status(UserStatus.ACTIVO)
+                .status(Status.ACTIVO)
                 .requirePasswordChange(false)
                 .employee(adminEmployee)
                 .build();

@@ -1,6 +1,6 @@
 package laboratorioxyz.com.ZoneControl.modulo_gestion_personal.repository;
 
-import laboratorioxyz.com.ZoneControl.model.enums.PermissionStatus;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.model.AccessPermission;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -16,13 +16,13 @@ public interface AccessPermissionRepository extends JpaRepository<AccessPermissi
 
     @Modifying
     @Query("UPDATE AccessPermission ap SET ap.status = :status WHERE ap.employee.id = :employeeId")
-    int updateStatusByEmployeeId(@Param("employeeId") UUID employeeId, @Param("status") PermissionStatus status);
+    int updateStatusByEmployeeId(@Param("employeeId") UUID employeeId, @Param("status") Status status);
 
     boolean existsByEmployee_IdAndProductionArea_IdAndStartTimeAndEndTimeAndStatus(
-            UUID employeeId, UUID productionAreaId, LocalTime startTime, LocalTime endTime, PermissionStatus status);
+            UUID employeeId, UUID productionAreaId, LocalTime startTime, LocalTime endTime, Status status);
 
     List<AccessPermission> findByStatusAndReactivationDateBefore(
-            PermissionStatus status, LocalDate date);
+            Status status, LocalDate date);
 
     @Query("SELECT COUNT(ap) > 0 FROM AccessPermission ap "
             + "WHERE ap.employee.id = :employeeId AND ap.productionArea.id = :areaId "

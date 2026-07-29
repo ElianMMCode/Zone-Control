@@ -2,7 +2,7 @@ package laboratorioxyz.com.ZoneControl.modulo_gestion_personal.model;
 
 import jakarta.persistence.*;
 import laboratorioxyz.com.ZoneControl.model.entity.ProductionArea;
-import laboratorioxyz.com.ZoneControl.model.enums.PermissionStatus;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -34,9 +34,9 @@ public class AccessPermission {
     private ProductionArea productionArea;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 10, nullable = false)
+    @Column(length = 11, nullable = false)
     @Builder.Default
-    private PermissionStatus status = PermissionStatus.ACTIVO;
+    private Status status = Status.ACTIVO;
 
     @Column(nullable = false)
     private LocalDate startDate;

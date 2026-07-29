@@ -2,6 +2,7 @@ package laboratorioxyz.com.ZoneControl.model.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import lombok.*;
 
 import java.util.UUID;
@@ -37,4 +38,9 @@ public class Office {
     private Double latitude;
 
     private Double longitude;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 11, nullable = false)
+    @Builder.Default
+    private Status status = Status.ACTIVO;
 }

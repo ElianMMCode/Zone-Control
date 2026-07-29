@@ -4,17 +4,13 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 
-/**
- * Respuesta individual en GET /public/catalogo.
- * Representa un producto farmacéutico con sus datos principales.
- * productionArea se almacena como String desnormalizado porque
- * en el catálogo público solo se muestra el nombre del área,
- * sin necesidad de relación con la entidad ProductionArea.
- */
+import java.util.UUID;
+
 @Data
 @AllArgsConstructor
 @Builder
 public class CatalogResponse {
+    private UUID id;
     private String name;
     private String description;
     private String activeIngredient;

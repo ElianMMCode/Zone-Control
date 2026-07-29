@@ -2,6 +2,7 @@ package laboratorioxyz.com.ZoneControl.modulo_publico.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import lombok.*;
 
 import java.util.UUID;
@@ -40,4 +41,9 @@ public class ProductCatalog {
     @Size(max = 30)
     @Column(length = 30)
     private String productionArea;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 11, nullable = false)
+    @Builder.Default
+    private Status status = Status.ACTIVO;
 }
