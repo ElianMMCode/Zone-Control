@@ -155,7 +155,7 @@ Crear en orden de dependencia:
 | email | String | Único, not null |
 | password | String | BCrypt, not null |
 | rol | Enum(ADMIN, GESTOR_PERSONAL, SUPERVISOR_AUDITOR, SEGURIDAD) | Not null |
-| estado | Enum(ACTIVO, INACTIVO) | Default ACTIVO |
+| estado | Enum(ACTIVO, INACTIVO) | Default ACTIVO — usa Status (ACTIVO, INACTIVO, SUSPENDIDO) pero solo ACTIVO/INACTIVO aplican |
 | requiereCambioPassword | boolean | Default false |
 | employee | @OneToOne(Employee) | Not null, unique |
 
@@ -170,12 +170,12 @@ Crear en orden de dependencia:
 | nombres | String | Not null, min 2 chars |
 | apellidos | String | Not null, min 2 chars |
 | cargo | String | Not null |
-| estado | Enum(ACTIVO, INACTIVO, SUSPENDIDO) | Default ACTIVO |
+| estado | Enum(ACTIVO, INACTIVO, SUSPENDIDO) | Default ACTIVO — usa Status |
 | departamento | @ManyToOne(Departamento) | Not null |
 
 Unique constraint: (tipoDocumento, numeroDocumento)
 
-**Nota:** El estado del empleado usa `EmployeeStatus` (ACTIVO, INACTIVO, SUSPENDIDO), distinto de `UserStatus` que solo tiene ACTIVO/INACTIVO. Si un empleado pasa a INACTIVO o SUSPENDIDO, sus permisos de acceso se marcan como SUSPENDIDO y su usuario de sistema (si existe) se marca como INACTIVO en cascada.
+**Nota:** Todos los estados usan el enum `Status` (ACTIVO, INACTIVO, SUSPENDIDO). Si un empleado pasa a INACTIVO o SUSPENDIDO, sus permisos de acceso se marcan como SUSPENDIDO y su usuario de sistema (si existe) se marca como INACTIVO en cascada.
 
 ### 2.4 `AreaProduccion`
 
@@ -216,32 +216,34 @@ Tabla clave-valor para contenido del módulo público:
 
 | Campo | Tipo |
 |-------|------|
-| id | Long (PK) |
-| seccion | String (INSTITUCIONAL, CONTACTO, SEDES) |
-| clave | String |
+| id | UUID (PK) |
+| seccion | Enum(INSTITUTIONAL, CONTACT) |
+| clave | String(80) |
 | valor | TEXT |
 
 ### 2.8 `CatalogoProducto`
 
 | Campo | Tipo |
 |-------|------|
-| id | Long (PK) |
-| nombre | String |
+| id | UUID (PK) |
+| nombre | String(80) |
 | descripcion | TEXT |
-| principioActivo | String |
-| presentacion | String |
-| areaProduccion | String |
+| principioActivo | String(40) |
+| presentacion | String(40) |
+| areaProduccion | String(30) |
+| estado | Enum(ACTIVO, INACTIVO, SUSPENDIDO) — Status, Default ACTIVO |
 
 ### 2.9 `Sede`
 
 | Campo | Tipo |
 |-------|------|
-| id | Long (PK) |
-| nombre | String |
-| direccion | String |
-| horarioAtencion | String |
+| id | UUID (PK) |
+| nombre | String(30) |
+| direccion | String(50) |
+| horarioAtencion | String(30) |
 | latitud | Double |
 | longitud | Double |
+| estado | Enum(ACTIVO, INACTIVO, SUSPENDIDO) — Status, Default ACTIVO |
 
 ---
 
@@ -478,7 +480,18 @@ Usar SLF4J + Logback. Registrar en cada operación crítica:
 | PUT | /api/admin/users/{id} | Admin | Administración | 06 |
 | PATCH | /api/admin/users/{id}/status | Admin | Administración | 07 |
 | POST | /api/admin/users/{id}/reset-password | Admin | Administración | 08 |
-| PUT/POST | /api/admin/contenido-publico/{seccion} | Admin | Administración | 19 |
+| PATCH | /api/admin/contenido-publico/sedes/{id}/status | Admin | Administración | 19 |
+| PATCH | /api/admin/contenido-publico/catalogo/{id}/status | Admin | Administración | 19 |
+| GET | /api/admin/contenido-publico/institucional | Admin | Administración | 19 |
+| PUT | /api/admin/contenido-publico/institucional | Admin | Administración | 19 |
+| GET | /api/admin/contenido-publico/contacto | Admin | Administración | 19 |
+| PUT | /api/admin/contenido-publico/contacto | Admin | Administración | 19 |
+| POST | /api/admin/contenido-publico/sedes | Admin | Administración | 19 |
+| PUT | /api/admin/contenido-publico/sedes/{id} | Admin | Administración | 19 |
+| PATCH | /api/admin/contenido-publico/sedes/{id}/status | Admin | Administración | 19 |
+| POST | /api/admin/contenido-publico/catalogo | Admin | Administración | 19 |
+| PUT | /api/admin/contenido-publico/catalogo/{id} | Admin | Administración | 19 |
+| PATCH | /api/admin/contenido-publico/catalogo/{id}/status | Admin | Administración | 19 |
 | POST | /api/admin/contenido-publico/folleto | Admin | Administración | 19 |
 | DELETE | /api/admin/contenido-publico/folleto | Admin | Administración | 19 |
 | POST | /api/personal | Gestor/Admin | Gestión Personal | 09 |

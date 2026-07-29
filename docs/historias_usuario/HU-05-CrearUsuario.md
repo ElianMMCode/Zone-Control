@@ -16,17 +16,17 @@
 
 ## Requerimiento
 
-El sistema debe permitir al administrador crear usuarios internos del sistema, asignándoles un rol (Administrador, Gestor de Personal o Supervisor/Auditor) y un estado inicial (Activo/Inactivo). Cada usuario debe estar vinculado a un empleado existente (relación @OneToOne obligatoria), garantizando que todo usuario del sistema es también personal de la empresa. El email debe ser único en el sistema y la contraseña debe cumplir con los siguientes requisitos de seguridad antes de ser encriptada y almacenada: mínimo 8 caracteres de longitud, al menos una letra mayúscula (A-Z), al menos una letra minúscula (a-z), al menos un dígito numérico (0-9) y al menos un carácter especial (@$!%*?&).
+El sistema debe permitir al administrador crear usuarios internos del sistema, asignándoles un rol (Administrador, Gestor de Personal o Supervisor/Auditor) y un estado inicial (Activo/Inactivo). Cada usuario debe estar vinculado a un empleado existente (relación @OneToOne obligatoria), garantizando que todo usuario del sistema es también personal de la empresa. El email debe ser único en el sistema. La contraseña se genera automáticamente por el sistema utilizando PasswordGenerator, cumple con todos los requisitos de seguridad (mínimo 8 caracteres, mayúscula, minúscula, dígito, especial) y se muestra al administrador una sola vez en la respuesta. El usuario queda marcado con requirePasswordChange = true.
 
 ## Criterios de Aceptación
 
 Condición 01
 
-Dado: que el administrador está autenticado y completa el formulario con todos los datos válidos, un email único y una contraseña que cumple con los requisitos de seguridad
+Dado: que el administrador está autenticado y completa el formulario con todos los datos válidos y un email único
 
 Cuando: envía el formulario de creación
 
-Entonces: el sistema valida los datos, verifica los requisitos de la contraseña, la encripta con BCrypt, guarda el usuario en PostgreSQL, retorna HTTP 201 y actualiza la lista de usuarios en el frontend
+Entonces: el sistema genera una contraseña temporal automática que cumple los requisitos de seguridad, la encripta con BCrypt, guarda el usuario en PostgreSQL con requirePasswordChange = true, retorna HTTP 201 con los datos del usuario y la contraseña temporal (visible una sola vez)
 
 Condición 02
 
@@ -34,37 +34,28 @@ Dado: que el administrador ingresa un email
 
 Cuando: el email ya está registrado en el sistema
 
-Entonces: el sistema retorna HTTP 409 y muestra el mensaje "El email ingresado ya se encuentra registrado en el sistema"
+Entonces: el sistema retorna HTTP 409 y muestra el mensaje "El email ya está registrado"
 
 Condición 03
 
-Dado: que el administrador ingresa una contraseña
+Dado: que el administrador selecciona un empleado
 
-Cuando: la contraseña no cumple con alguno de los requisitos de seguridad (menos de 8 caracteres, sin mayúscula, sin minúscula, sin dígito o sin carácter especial)
+Cuando: el empleado ya tiene un usuario de sistema asociado
 
-Entonces: el sistema rechaza el envío del formulario y muestra un mensaje detallando los requisitos que no se cumplen: "La contraseña debe tener mínimo 8 caracteres, al menos una letra mayúscula, una letra minúscula, un número y un carácter especial (@$!%*?&)"
-
-Condición 04
-
-Dado: que el administrador envía el formulario de creación
-
-Cuando: hay campos obligatorios vacíos (nombre completo, email, contraseña, confirmar contraseña, rol, estado) o las contraseñas no coinciden
-
-Entonces: el sistema muestra los mensajes de error específicos debajo de cada campo inválido e impide el envío hasta que todos los errores sean corregidos
+Entonces: el sistema retorna HTTP 409 con el mensaje "El empleado ya tiene un usuario de sistema asociado"
 
 ## Tareas
 
 | No | Descripción |
 |---|---|
-| 1 | Diseñar formulario de creación de usuario con campos: nombre completo, email, contraseña, confirmar contraseña, rol (select), empleado (selector que busca empleados existentes), estado (select) |
-| 2 | Implementar validación de requisitos de contraseña en frontend: mínimo 8 caracteres, al menos 1 mayúscula, 1 minúscula, 1 dígito, 1 carácter especial (@$!%*?&) |
-| 3 | Implementar validación de coincidencia entre contraseña y confirmar contraseña en frontend |
-| 4 | Implementar endpoint POST /admin/users en Spring Boot con validación de requisitos de contraseña en backend |
-| 5 | Validar unicidad del email consultando PostgreSQL antes de la inserción |
-| 6 | Validar que el employeeId enviado exista y no esté vinculado a otro usuario |
-| 7 | Encriptar la contraseña con BCrypt una vez superadas todas las validaciones |
-| 8 | Retornar HTTP 201 con ID del usuario creado y mostrar notificación de éxito en el frontend |
-| 9 | Manejar respuestas de error: 409 para email duplicado o empleado ya vinculado, 400 para contraseña inválida, campos faltantes o empleado inexistente |
+| 1 | Diseñar formulario de creación de usuario con campos: nombre, apellido, email, rol (select), empleado (selector que busca empleados existentes) |
+| 2 | Implementar endpoint POST /admin/users en Spring Boot que genera contraseña temporal automáticamente |
+| 3 | Generar contraseña temporal con PasswordGenerator (8+ chars, mayúscula, minúscula, dígito, especial) |
+| 4 | Validar unicidad del email consultando PostgreSQL antes de la inserción |
+| 5 | Validar que el employeeId enviado exista y no esté vinculado a otro usuario |
+| 6 | Encriptar la contraseña temporal con BCrypt y marcar requirePasswordChange = true |
+| 7 | Retornar HTTP 201 con datos del usuario + contraseña temporal (visible una sola vez) |
+| 8 | Manejar respuestas de error: 409 para email duplicado o empleado ya vinculado, 400 para empleado inexistente |
 
 ## Control de Versiones
 

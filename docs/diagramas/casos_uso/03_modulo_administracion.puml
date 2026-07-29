@@ -9,13 +9,22 @@ left to right direction
 actor "Administrador" as Admin
 
 package "Módulo de Administración" {
-    usecase "Administrar sistema y usuarios (CRUD)" as UC_Admin1
-    usecase "Gestionar contenido\ndel módulo público" as UC_Admin2
+    usecase "CRUD de usuarios\n(crear, editar, activar/desactivar,\nrestablecer contraseña)" as UC_Admin1
+    usecase "Gestionar contenido\ninstitucional y contacto" as UC_Admin2a
+    usecase "Gestionar sedes\n(CRUD + activar/desactivar)" as UC_Admin2b
+    usecase "Gestionar catálogo\nde productos\n(CRUD + activar/desactivar)" as UC_Admin2c
+    usecase "Cargar/eliminar\nfolleto PDF" as UC_Admin2d
 }
 
 Admin --> UC_Admin1
-Admin --> UC_Admin2
+Admin --> UC_Admin2a
+Admin --> UC_Admin2b
+Admin --> UC_Admin2c
+Admin --> UC_Admin2d
 UC_Admin1 ..> UC_Login : <<include>>
-UC_Admin2 ..> UC_Login : <<include>>
+UC_Admin2a ..> UC_Login : <<include>>
+UC_Admin2b ..> UC_Login : <<include>>
+UC_Admin2c ..> UC_Login : <<include>>
+UC_Admin2d ..> UC_Login : <<include>>
 
 @enduml
