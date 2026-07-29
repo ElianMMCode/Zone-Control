@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 import laboratorioxyz.com.ZoneControl.model.entity.Department;
 import laboratorioxyz.com.ZoneControl.model.enums.DocumentType;
-import laboratorioxyz.com.ZoneControl.model.enums.EmployeeStatus;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import lombok.*;
 
 import java.util.UUID;
@@ -53,7 +53,7 @@ public class Employee {
     @Enumerated(EnumType.STRING)
     @Column(length = 11, nullable = false)
     @Builder.Default
-    private EmployeeStatus status = EmployeeStatus.ACTIVO;
+    private Status status = Status.ACTIVO;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id", nullable = false)

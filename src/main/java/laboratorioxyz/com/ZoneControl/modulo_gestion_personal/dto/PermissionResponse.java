@@ -1,6 +1,6 @@
 package laboratorioxyz.com.ZoneControl.modulo_gestion_personal.dto;
 
-import laboratorioxyz.com.ZoneControl.model.enums.PermissionStatus;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,7 +17,7 @@ public class PermissionResponse {
     private String employeeCode;
     private String employeeName;
     private String areaName;
-    private PermissionStatus status;
+    private Status status;
     private LocalDate startDate;
     private LocalDate expirationDate;
     private LocalDate reactivationDate;

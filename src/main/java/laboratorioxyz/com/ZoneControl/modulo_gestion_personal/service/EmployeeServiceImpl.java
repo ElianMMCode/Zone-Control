@@ -3,8 +3,7 @@ package laboratorioxyz.com.ZoneControl.modulo_gestion_personal.service;
 import jakarta.persistence.criteria.Predicate;
 import laboratorioxyz.com.ZoneControl.model.entity.Department;
 import laboratorioxyz.com.ZoneControl.model.enums.DocumentType;
-import laboratorioxyz.com.ZoneControl.model.enums.EmployeeStatus;
-import laboratorioxyz.com.ZoneControl.model.enums.PermissionStatus;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import laboratorioxyz.com.ZoneControl.model.repository.DepartmentRepository;
 import laboratorioxyz.com.ZoneControl.modulo_autenticacion.service.UserService;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.dto.*;
@@ -93,7 +92,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Transactional(readOnly = true)
     public Page<EmployeeSearchResponse> search(String documentType, String documentNumber,
                                                 String firstName, String lastName,
-                                                UUID departmentId, EmployeeStatus status,
+                                                UUID departmentId, Status status,
                                                 Pageable pageable) {
         if (documentType == null && documentNumber == null && firstName == null
                 && lastName == null && departmentId == null && status == null) {
@@ -180,10 +179,9 @@ public class EmployeeServiceImpl implements EmployeeService {
             employee.setDepartment(department);
         }
         if (request.getStatus() != null) {
-            EmployeeStatus previousStatus = employee.getStatus();
             employee.setStatus(request.getStatus());
-            if (request.getStatus() == EmployeeStatus.INACTIVO
-                    || request.getStatus() == EmployeeStatus.SUSPENDIDO) {
+            if (request.getStatus() == Status.INACTIVO
+                    || request.getStatus() == Status.SUSPENDIDO) {
                 cascadeDeactivate(employee.getId());
             }
         }
@@ -194,7 +192,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     private void cascadeDeactivate(UUID employeeId) {
         int updatedPermissions = accessPermissionRepository.updateStatusByEmployeeId(
-                employeeId, PermissionStatus.SUSPENDIDO);
+                employeeId, Status.SUSPENDIDO);
         if (updatedPermissions > 0) {
             log.info("Suspended {} permissions for employee {}", updatedPermissions, employeeId);
         }
@@ -342,9 +340,9 @@ public class EmployeeServiceImpl implements EmployeeService {
                 hasError = true;
             }
 
-            EmployeeStatus status;
+            Status status;
             try {
-                status = EmployeeStatus.valueOf(estadoStr);
+                status = Status.valueOf(estadoStr);
             } catch (IllegalArgumentException e) {
                 errorList.add(BulkUploadError.builder()
                         .row(rowNumber).field("estado")

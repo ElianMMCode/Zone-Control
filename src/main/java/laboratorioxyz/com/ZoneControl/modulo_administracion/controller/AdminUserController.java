@@ -1,7 +1,7 @@
 package laboratorioxyz.com.ZoneControl.modulo_administracion.controller;
 
 import jakarta.validation.Valid;
-import laboratorioxyz.com.ZoneControl.model.enums.UserStatus;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import laboratorioxyz.com.ZoneControl.modulo_autenticacion.dto.CreateUserRequest;
 import laboratorioxyz.com.ZoneControl.modulo_autenticacion.model.User;
 import laboratorioxyz.com.ZoneControl.modulo_autenticacion.repository.UserRepository;
@@ -50,7 +50,7 @@ public class AdminUserController {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(request.getRole())
-                .status(UserStatus.ACTIVO)
+                .status(Status.ACTIVO)
                 .requirePasswordChange(true)
                 .employee(employee)
                 .build();

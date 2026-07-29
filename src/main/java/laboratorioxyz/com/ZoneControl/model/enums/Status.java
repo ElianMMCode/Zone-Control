@@ -1,6 +1,6 @@
 package laboratorioxyz.com.ZoneControl.model.enums;
 
-public enum EmployeeStatus {
+public enum Status {
     ACTIVO,
     INACTIVO,
     SUSPENDIDO

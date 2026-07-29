@@ -1,6 +1,6 @@
 package laboratorioxyz.com.ZoneControl.config;
 
-import laboratorioxyz.com.ZoneControl.model.enums.PermissionStatus;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.model.AccessPermission;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.repository.AccessPermissionRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,10 +23,10 @@ public class PermissionScheduler {
     @Transactional
     public void reactivateExpiredSuspensions() {
         List<AccessPermission> expired = accessPermissionRepository
-                .findByStatusAndReactivationDateBefore(PermissionStatus.SUSPENDIDO, LocalDate.now());
+                .findByStatusAndReactivationDateBefore(Status.SUSPENDIDO, LocalDate.now());
 
         for (AccessPermission permission : expired) {
-            permission.setStatus(PermissionStatus.ACTIVO);
+            permission.setStatus(Status.ACTIVO);
             permission.setReactivationDate(null);
             accessPermissionRepository.save(permission);
             log.info("Auto-reactivated permission id={} for employee={}",

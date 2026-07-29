@@ -3,7 +3,7 @@ package laboratorioxyz.com.ZoneControl.modulo_gestion_personal.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import laboratorioxyz.com.ZoneControl.model.entity.Department;
 import laboratorioxyz.com.ZoneControl.model.enums.DocumentType;
-import laboratorioxyz.com.ZoneControl.model.enums.EmployeeStatus;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import laboratorioxyz.com.ZoneControl.model.repository.DepartmentRepository;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.model.Employee;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.repository.EmployeeRepository;
@@ -128,7 +128,7 @@ class BulkUploadControllerTest {
                 .lastName("Ya")
                 .position("Test")
                 .department(department)
-                .status(EmployeeStatus.ACTIVO)
+                .status(Status.ACTIVO)
                 .build());
 
         String csv = "tipo_documento;documento_identidad;nombres;apellidos;cargo;departamento;estado\n"

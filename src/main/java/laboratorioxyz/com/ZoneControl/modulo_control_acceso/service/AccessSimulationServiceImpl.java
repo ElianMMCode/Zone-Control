@@ -2,7 +2,7 @@ package laboratorioxyz.com.ZoneControl.modulo_control_acceso.service;
 
 import laboratorioxyz.com.ZoneControl.model.entity.ProductionArea;
 import laboratorioxyz.com.ZoneControl.model.enums.AccessResult;
-import laboratorioxyz.com.ZoneControl.model.enums.EmployeeStatus;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import laboratorioxyz.com.ZoneControl.model.repository.ProductionAreaRepository;
 import laboratorioxyz.com.ZoneControl.modulo_control_acceso.dto.SimulateAccessResponse;
 import laboratorioxyz.com.ZoneControl.modulo_control_acceso.model.AccessHistory;
@@ -46,7 +46,7 @@ public class AccessSimulationServiceImpl implements AccessSimulationService {
             return new SimulateAccessResponse(AccessResult.UNREGISTERED, "NO REGISTRADO");
         }
 
-        if (employee.getStatus() != EmployeeStatus.ACTIVO) {
+        if (employee.getStatus() != Status.ACTIVO) {
             logAccess(employee, area.getName(), AccessResult.DENIED);
             return new SimulateAccessResponse(AccessResult.DENIED, "INGRESO DENEGADO");
         }

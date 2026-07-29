@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
 import laboratorioxyz.com.ZoneControl.model.enums.Role;
-import laboratorioxyz.com.ZoneControl.model.enums.UserStatus;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.model.Employee;
 import lombok.*;
 
@@ -48,9 +48,9 @@ public class User {
     private Role role;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 10, nullable = false)
+    @Column(length = 11, nullable = false)
     @Builder.Default
-    private UserStatus status = UserStatus.ACTIVO;
+    private Status status = Status.ACTIVO;
 
     @Column(nullable = false)
     @Builder.Default

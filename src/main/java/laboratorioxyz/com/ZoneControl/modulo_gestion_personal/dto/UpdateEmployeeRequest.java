@@ -1,7 +1,7 @@
 package laboratorioxyz.com.ZoneControl.modulo_gestion_personal.dto;
 
 import laboratorioxyz.com.ZoneControl.model.enums.DocumentType;
-import laboratorioxyz.com.ZoneControl.model.enums.EmployeeStatus;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,5 +20,5 @@ public class UpdateEmployeeRequest {
     private DocumentType documentType;
     private String documentNumber;
     private UUID departmentId;
-    private EmployeeStatus status;
+    private Status status;
 }

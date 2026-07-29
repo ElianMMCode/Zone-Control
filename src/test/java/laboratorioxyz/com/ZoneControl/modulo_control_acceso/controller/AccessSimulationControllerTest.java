@@ -4,8 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import laboratorioxyz.com.ZoneControl.model.entity.Department;
 import laboratorioxyz.com.ZoneControl.model.entity.ProductionArea;
 import laboratorioxyz.com.ZoneControl.model.enums.DocumentType;
-import laboratorioxyz.com.ZoneControl.model.enums.EmployeeStatus;
-import laboratorioxyz.com.ZoneControl.model.enums.PermissionStatus;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import laboratorioxyz.com.ZoneControl.model.repository.DepartmentRepository;
 import laboratorioxyz.com.ZoneControl.model.repository.ProductionAreaRepository;
 import laboratorioxyz.com.ZoneControl.modulo_control_acceso.repository.AccessHistoryRepository;
@@ -66,7 +65,7 @@ class AccessSimulationControllerTest {
         area = productionAreaRepository.findByName("Sala Blanca A").orElseThrow();
     }
 
-    private Employee createEmployee(String code, String docNum, EmployeeStatus status) {
+    private Employee createEmployee(String code, String docNum, Status status) {
         return employeeRepository.save(Employee.builder()
                 .employeeCode(code)
                 .documentType(DocumentType.CC)
@@ -83,7 +82,7 @@ class AccessSimulationControllerTest {
         accessPermissionRepository.save(AccessPermission.builder()
                 .employee(employee)
                 .productionArea(targetArea)
-                .status(PermissionStatus.ACTIVO)
+                .status(Status.ACTIVO)
                 .startDate(LocalDate.now().minusDays(1))
                 .expirationDate(LocalDate.now().plusDays(30))
                 .startTime(LocalTime.of(6, 0))
@@ -106,7 +105,7 @@ class AccessSimulationControllerTest {
 
     @Test
     void simulate_authorizedEmployee_returnsAuthorized() throws Exception {
-        Employee emp = createEmployee("EMP-TEST-01", "1111111111", EmployeeStatus.ACTIVO);
+        Employee emp = createEmployee("EMP-TEST-01", "1111111111", Status.ACTIVO);
         grantPermission(emp, area);
 
         mockMvc.perform(post("/access/simulate")
@@ -119,7 +118,7 @@ class AccessSimulationControllerTest {
 
     @Test
     void simulate_inactiveEmployee_returnsDenied() throws Exception {
-        Employee emp = createEmployee("EMP-TEST-02", "2222222222", EmployeeStatus.INACTIVO);
+        Employee emp = createEmployee("EMP-TEST-02", "2222222222", Status.INACTIVO);
 
         mockMvc.perform(post("/access/simulate")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -131,7 +130,7 @@ class AccessSimulationControllerTest {
 
     @Test
     void simulate_suspendedEmployee_returnsDenied() throws Exception {
-        Employee emp = createEmployee("EMP-TEST-03", "3333333333", EmployeeStatus.SUSPENDIDO);
+        Employee emp = createEmployee("EMP-TEST-03", "3333333333", Status.SUSPENDIDO);
 
         mockMvc.perform(post("/access/simulate")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -153,7 +152,7 @@ class AccessSimulationControllerTest {
 
     @Test
     void simulate_noValidPermission_returnsSuspended() throws Exception {
-        Employee emp = createEmployee("EMP-TEST-04", "4444444444", EmployeeStatus.ACTIVO);
+        Employee emp = createEmployee("EMP-TEST-04", "4444444444", Status.ACTIVO);
 
         mockMvc.perform(post("/access/simulate")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -165,7 +164,7 @@ class AccessSimulationControllerTest {
 
     @Test
     void simulate_permissionForDifferentArea_returnsSuspended() throws Exception {
-        Employee emp = createEmployee("EMP-TEST-05", "5555555555", EmployeeStatus.ACTIVO);
+        Employee emp = createEmployee("EMP-TEST-05", "5555555555", Status.ACTIVO);
         grantPermission(emp, area);
 
         ProductionArea otherArea = productionAreaRepository.findByName("Sala Blanca B").orElseThrow();
@@ -180,7 +179,7 @@ class AccessSimulationControllerTest {
 
     @Test
     void simulate_logsAccessHistory() throws Exception {
-        Employee emp = createEmployee("EMP-TEST-06", "6666666666", EmployeeStatus.ACTIVO);
+        Employee emp = createEmployee("EMP-TEST-06", "6666666666", Status.ACTIVO);
         grantPermission(emp, area);
 
         mockMvc.perform(post("/access/simulate")

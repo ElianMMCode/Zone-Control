@@ -4,8 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import laboratorioxyz.com.ZoneControl.model.entity.Department;
 import laboratorioxyz.com.ZoneControl.model.entity.ProductionArea;
 import laboratorioxyz.com.ZoneControl.model.enums.DocumentType;
-import laboratorioxyz.com.ZoneControl.model.enums.EmployeeStatus;
-import laboratorioxyz.com.ZoneControl.model.enums.PermissionStatus;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import laboratorioxyz.com.ZoneControl.model.repository.DepartmentRepository;
 import laboratorioxyz.com.ZoneControl.model.repository.ProductionAreaRepository;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.model.Employee;
@@ -62,7 +61,7 @@ class PermissionControllerTest {
                 .lastName("User")
                 .position("Técnico")
                 .department(dept)
-                .status(EmployeeStatus.ACTIVO)
+                .status(Status.ACTIVO)
                 .build());
         ProductionArea area = productionAreaRepository.findByName("Sala Blanca A").orElseThrow();
         areaId = area.getId();
@@ -89,7 +88,7 @@ class PermissionControllerTest {
 
     @Test
     void grantPermission_inactiveEmployee_returns400() throws Exception {
-        activeEmployee.setStatus(EmployeeStatus.INACTIVO);
+        activeEmployee.setStatus(Status.INACTIVO);
         employeeRepository.save(activeEmployee);
 
         var request = new Object() {

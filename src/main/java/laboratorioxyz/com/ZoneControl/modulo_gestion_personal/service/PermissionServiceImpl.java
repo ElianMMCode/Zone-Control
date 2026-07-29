@@ -1,8 +1,7 @@
 package laboratorioxyz.com.ZoneControl.modulo_gestion_personal.service;
 
 import laboratorioxyz.com.ZoneControl.model.entity.ProductionArea;
-import laboratorioxyz.com.ZoneControl.model.enums.EmployeeStatus;
-import laboratorioxyz.com.ZoneControl.model.enums.PermissionStatus;
+import laboratorioxyz.com.ZoneControl.model.enums.Status;
 import laboratorioxyz.com.ZoneControl.model.repository.ProductionAreaRepository;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.dto.CreatePermissionRequest;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.dto.PermissionResponse;
@@ -37,7 +36,7 @@ public class PermissionServiceImpl implements PermissionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Empleado no encontrado"));
 
-        if (employee.getStatus() != EmployeeStatus.ACTIVO) {
+        if (employee.getStatus() != Status.ACTIVO) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "No se puede otorgar acceso a empleado inactivo");
         }
@@ -50,7 +49,7 @@ public class PermissionServiceImpl implements PermissionService {
                 .existsByEmployee_IdAndProductionArea_IdAndStartTimeAndEndTimeAndStatus(
                         employee.getId(), area.getId(),
                         request.getStartTime(), request.getEndTime(),
-                        PermissionStatus.ACTIVO)) {
+                        Status.ACTIVO)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Conflicto de permisos existente");
         }
@@ -58,7 +57,7 @@ public class PermissionServiceImpl implements PermissionService {
         AccessPermission permission = AccessPermission.builder()
                 .employee(employee)
                 .productionArea(area)
-                .status(PermissionStatus.ACTIVO)
+                .status(Status.ACTIVO)
                 .startDate(request.getStartDate())
                 .expirationDate(request.getExpirationDate())
                 .startTime(request.getStartTime())
@@ -94,7 +93,7 @@ public class PermissionServiceImpl implements PermissionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Permiso no encontrado"));
 
-        permission.setStatus(PermissionStatus.SUSPENDIDO);
+        permission.setStatus(Status.SUSPENDIDO);
         permission.setReactivationDate(reactivationDate);
         permission = accessPermissionRepository.save(permission);
 
