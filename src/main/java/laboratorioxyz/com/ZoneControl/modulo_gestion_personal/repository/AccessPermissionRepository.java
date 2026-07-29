@@ -14,15 +14,14 @@ import java.util.UUID;
 
 public interface AccessPermissionRepository extends JpaRepository<AccessPermission, UUID> {
 
+    List<AccessPermission> findByEmployee_Id(UUID employeeId);
+
     @Modifying
     @Query("UPDATE AccessPermission ap SET ap.status = :status WHERE ap.employee.id = :employeeId")
     int updateStatusByEmployeeId(@Param("employeeId") UUID employeeId, @Param("status") PermissionStatus status);
 
     boolean existsByEmployee_IdAndProductionArea_IdAndStartTimeAndEndTimeAndStatus(
             UUID employeeId, UUID productionAreaId, LocalTime startTime, LocalTime endTime, PermissionStatus status);
-
-    List<AccessPermission> findByStatusAndReactivationDateBefore(
-            PermissionStatus status, LocalDate date);
 
     @Query("SELECT COUNT(ap) > 0 FROM AccessPermission ap "
             + "WHERE ap.employee.id = :employeeId AND ap.productionArea.id = :areaId "
