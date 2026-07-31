@@ -5,6 +5,7 @@ import laboratorioxyz.com.ZoneControl.model.enums.EmployeeStatus;
 import laboratorioxyz.com.ZoneControl.model.enums.PermissionStatus;
 import laboratorioxyz.com.ZoneControl.model.enums.Role;
 import laboratorioxyz.com.ZoneControl.model.enums.UserStatus;
+import laboratorioxyz.com.ZoneControl.modulo_administracion.dto.AdminStatsResponse;
 import laboratorioxyz.com.ZoneControl.modulo_administracion.dto.ResetPasswordResponse;
 import laboratorioxyz.com.ZoneControl.modulo_administracion.dto.StatusUpdateRequest;
 import laboratorioxyz.com.ZoneControl.modulo_administracion.dto.UpdateUserRequest;
@@ -23,12 +24,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
@@ -41,7 +40,6 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final UserRepository userRepository;
     private final EmployeeRepository employeeRepository;
     private final AccessPermissionRepository accessPermissionRepository;
-    private final BCryptPasswordEncoder passwordEncoder;
     private final SetupPasswordService setupPasswordService;
     private final MagicLinkNotifier magicLinkNotifier;
 
@@ -188,6 +186,16 @@ public class AdminUserServiceImpl implements AdminUserService {
         );
     }
 
+    /**
+     * Restablecimiento de contraseña con magic link (HU-08).
+     *
+     * Por qué magic link en lugar de contraseña temporal visible al admin:
+     * mantener la misma política de seguridad que la creación de usuarios
+     * (HU-05) — la contraseña nunca es conocida por el administrador ni viaja
+     * por email. Se invalida la contraseña actual, se genera un nuevo
+     * setupToken de un solo uso con expiración de 24h y se envía el enlace al
+     * correo personal del empleado.
+     */
     @Override
     @Transactional
     public ResetPasswordResponse resetPassword(UUID id) {
@@ -195,13 +203,23 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Usuario no encontrado"));
 
-        String tempPassword = generateTemporaryPassword();
-        user.setPassword(passwordEncoder.encode(tempPassword));
-        user.setRequirePasswordChange(true);
+        Employee employee = user.getEmployee();
+        if (employee.getEmail() == null || employee.getEmail().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El empleado no tiene un correo registrado. Regístrelo en Gestión Personal para restablecer la contraseña");
+        }
+
+        String rawToken = setupPasswordService.generateRawToken();
+        user.setSetupToken(setupPasswordService.hashToken(rawToken));
+        user.setSetupTokenExpiry(LocalDateTime.now().plusHours(24));
+        user.setPassword(null);
+        user.setRequirePasswordChange(false);
         userRepository.save(user);
 
-        log.info("Password reset for user {}", id);
-        return new ResetPasswordResponse(tempPassword);
+        magicLinkNotifier.sendSetupLink(employee.getEmail(),
+                user.getFirstName() + " " + user.getLastName(), rawToken);
+        log.info("Password reset for user {} (magic link enviado)", id);
+        return new ResetPasswordResponse("Enlace de configuración enviado al correo del usuario");
     }
 
     @Override
@@ -239,6 +257,22 @@ public class AdminUserServiceImpl implements AdminUserService {
         return toUserResponse(user);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public AdminStatsResponse getStats() {
+        return new AdminStatsResponse(
+                userRepository.count(),
+                userRepository.countByStatus(UserStatus.ACTIVO),
+                userRepository.countByStatus(UserStatus.INACTIVO),
+                userRepository.countBySetupTokenIsNotNull(),
+                employeeRepository.count(),
+                employeeRepository.countByStatus(EmployeeStatus.ACTIVO),
+                accessPermissionRepository.count(),
+                accessPermissionRepository.countByStatus(PermissionStatus.ACTIVO),
+                accessPermissionRepository.countByStatus(PermissionStatus.SUSPENDIDO)
+        );
+    }
+
     private UserResponse toUserResponse(User user) {
         return UserResponse.builder()
                 .id(user.getId())
@@ -251,31 +285,5 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .employeeCode(user.getEmployee().getEmployeeCode())
                 .position(user.getEmployee().getPosition())
                 .build();
-    }
-
-    private static final String UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    private static final String LOWER = "abcdefghijklmnopqrstuvwxyz";
-    private static final String DIGITS = "0123456789";
-    private static final String SPECIAL = "@$!%*?&";
-    private static final String ALL = UPPER + LOWER + DIGITS + SPECIAL;
-    private static final SecureRandom RANDOM = new SecureRandom();
-
-    private String generateTemporaryPassword() {
-        StringBuilder password = new StringBuilder();
-        password.append(UPPER.charAt(RANDOM.nextInt(UPPER.length())));
-        password.append(LOWER.charAt(RANDOM.nextInt(LOWER.length())));
-        password.append(DIGITS.charAt(RANDOM.nextInt(DIGITS.length())));
-        password.append(SPECIAL.charAt(RANDOM.nextInt(SPECIAL.length())));
-        for (int i = 4; i < 12; i++) {
-            password.append(ALL.charAt(RANDOM.nextInt(ALL.length())));
-        }
-        char[] chars = password.toString().toCharArray();
-        for (int i = chars.length - 1; i > 0; i--) {
-            int j = RANDOM.nextInt(i + 1);
-            char tmp = chars[i];
-            chars[i] = chars[j];
-            chars[j] = tmp;
-        }
-        return new String(chars);
     }
 }
