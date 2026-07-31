@@ -11,7 +11,9 @@ import laboratorioxyz.com.ZoneControl.modulo_reportes.dto.ExportRequest;
 import laboratorioxyz.com.ZoneControl.modulo_reportes.dto.SupervisorStatsResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,6 +31,17 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import com.itextpdf.text.BaseColor;
+import com.itextpdf.text.Chunk;
+import com.itextpdf.text.Document;
+import com.itextpdf.text.FontFactory;
+import com.itextpdf.text.PageSize;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.Phrase;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfWriter;
 
 @Service
 @RequiredArgsConstructor
@@ -105,6 +118,7 @@ public class HistoryServiceImpl implements HistoryService {
         return switch (request.getFormato().toUpperCase()) {
             case "CSV" -> generateCsv(records, fechaInicio, fechaFin);
             case "EXCEL" -> generateExcel(records, fechaInicio, fechaFin);
+            case "PDF" -> generatePdf(records, fechaInicio, fechaFin);
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Formato no soportado: " + request.getFormato());
         };
@@ -176,6 +190,57 @@ public class HistoryServiceImpl implements HistoryService {
                 accessPermissionRepository.countByStatus(PermissionStatus.SUSPENDIDO),
                 accessPermissionRepository.countDistinctEmployeesWithActivePermissions()
         );
+    }
+
+    private byte[] generatePdf(List<AccessHistory> records, LocalDate desde, LocalDate hasta) {
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Document document = new Document(PageSize.A4.rotate());
+            PdfWriter.getInstance(document, out);
+            document.open();
+
+            com.itextpdf.text.Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14);
+            com.itextpdf.text.Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, BaseColor.WHITE);
+            com.itextpdf.text.Font cellFont = FontFactory.getFont(FontFactory.HELVETICA, 8);
+
+            document.add(new Paragraph("Historial de Accesos - Laboratorio XYZ", titleFont));
+            document.add(new Paragraph("Generado: " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) +
+                    "  |  Período: " + desde + " a " + hasta, cellFont));
+            document.add(Chunk.NEWLINE);
+
+            PdfPTable table = new PdfPTable(8);
+            table.setWidthPercentage(100);
+            String[] cols = {"Fecha", "Hora", "ID Empleado", "Nombre", "Cargo", "Departamento", "Área", "Resultado"};
+            for (String col : cols) {
+                PdfPCell cell = new PdfPCell(new Phrase(col, headerFont));
+                cell.setBackgroundColor(new BaseColor(0, 61, 155));
+                table.addCell(cell);
+            }
+            DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm:ss");
+            for (AccessHistory h : records) {
+                table.addCell(new Phrase(h.getTimestamp().format(dateFmt), cellFont));
+                table.addCell(new Phrase(h.getTimestamp().format(timeFmt), cellFont));
+                table.addCell(new Phrase(h.getEmployee() != null ? h.getEmployee().getEmployeeCode() : "N/A", cellFont));
+                table.addCell(new Phrase(h.getEmployee() != null ? h.getEmployee().getFirstName() + " " + h.getEmployee().getLastName() : "N/A", cellFont));
+                table.addCell(new Phrase(h.getEmployee() != null ? h.getEmployee().getPosition() : "", cellFont));
+                table.addCell(new Phrase(h.getDepartment() != null ? h.getDepartment() : "", cellFont));
+                table.addCell(new Phrase(h.getProductionAreaName() != null ? h.getProductionAreaName() : "", cellFont));
+                table.addCell(new Phrase(h.getResult().name(), cellFont));
+            }
+            document.add(table);
+            document.add(Chunk.NEWLINE);
+
+            long validos = records.size();
+            long autorizados = records.stream().filter(h -> h.getResult() == AccessResult.AUTHORIZED).count();
+            document.add(new Paragraph("Resumen: Total=" + validos + ", Autorizados=" + autorizados +
+                    ", Otros=" + (validos - autorizados), cellFont));
+
+            document.close();
+            return out.toByteArray();
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Error al generar el archivo PDF");
+        }
     }
 
     private AccessHistoryResponse toResponse(AccessHistory h) {

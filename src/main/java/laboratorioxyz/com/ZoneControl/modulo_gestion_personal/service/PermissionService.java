@@ -17,6 +17,7 @@ public interface PermissionService {
     PermissionResponse grant(CreatePermissionRequest request);
     Map<String, String> revoke(UUID id);
     PermissionResponse suspend(UUID id, LocalDate reactivationDate);
+    PermissionResponse reactivate(UUID id);
     Page<PermissionResponse> list(String search, PermissionStatus status, Pageable pageable);
     List<ProductionArea> listAreas();
     PermissionResponse update(UUID id, UpdatePermissionRequest request);

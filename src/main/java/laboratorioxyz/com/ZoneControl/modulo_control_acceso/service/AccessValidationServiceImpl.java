@@ -38,6 +38,18 @@ public class AccessValidationServiceImpl implements AccessValidationService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Área de producción no encontrada: " + productionAreaName));
 
+        if (!area.isActive()) {
+            AccessHistory history = AccessHistory.builder()
+                    .employee(null)
+                    .productionAreaName(area.getName())
+                    .timestamp(LocalDateTime.now())
+                    .result(AccessResult.DENIED)
+                    .build();
+            accessHistoryRepository.save(history);
+            log.info("Access validation: area={} is inactive, result=DENIED", area.getName());
+            return new ValidateAccessResponse(AccessResult.DENIED, "INGRESO DENEGADO");
+        }
+
         Employee employee = employeeRepository.findByEmployeeCode(employeeCode).orElse(null);
 
         if (employee == null) {

@@ -98,4 +98,14 @@ public class PermissionController {
             @RequestBody UpdatePermissionRequest request) {
         return ResponseEntity.ok(permissionService.update(id, request));
     }
+
+    @Operation(summary = "Reactivar permiso suspendido",
+            description = "Restaura a estado ACTIVO un permiso que fue suspendido. Limpia la fecha de reactivación.")
+    @ApiResponse(responseCode = "200", description = "Permiso reactivado")
+    @ApiResponse(responseCode = "400", description = "El permiso ya está activo")
+    @ApiResponse(responseCode = "404", description = "Permiso no encontrado")
+    @PatchMapping("/{id}/reactivate")
+    public ResponseEntity<PermissionResponse> reactivate(@PathVariable UUID id) {
+        return ResponseEntity.ok(permissionService.reactivate(id));
+    }
 }

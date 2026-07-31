@@ -52,6 +52,11 @@ public class PermissionServiceImpl implements PermissionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Área de producción no encontrada: " + request.getProductionAreaName()));
 
+        if (!area.isActive()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Área de producción no encontrada o desactivada");
+        }
+
         if (accessPermissionRepository
                 .existsByEmployee_IdAndProductionArea_Id(
                         employee.getId(), area.getId())) {
@@ -132,7 +137,7 @@ public class PermissionServiceImpl implements PermissionService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductionArea> listAreas() {
-        return productionAreaRepository.findAll();
+        return productionAreaRepository.findAllByActive(true);
     }
 
     @Override
@@ -159,6 +164,23 @@ public class PermissionServiceImpl implements PermissionService {
         }
         permission = accessPermissionRepository.save(permission);
         log.info("Permission updated: id={}", id);
+        return toResponse(permission);
+    }
+
+    @Override
+    @Transactional
+    public PermissionResponse reactivate(UUID id) {
+        AccessPermission permission = accessPermissionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Permiso no encontrado"));
+        if (permission.getStatus() != PermissionStatus.SUSPENDIDO) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El permiso ya está activo");
+        }
+        permission.setStatus(PermissionStatus.ACTIVO);
+        permission.setReactivationDate(null);
+        permission = accessPermissionRepository.save(permission);
+        log.info("Permission reactivated: id={}", id);
         return toResponse(permission);
     }
 

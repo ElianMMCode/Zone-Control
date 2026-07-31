@@ -417,4 +417,44 @@ class PermissionControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("No se puede editar un permiso suspendido"));
     }
+
+    @Test
+    void reactivatePermission_suspendedToActive_returns200() throws Exception {
+        grantPermission();
+        UUID permId = UUID.fromString(objectMapper.readTree(
+                mockMvc.perform(get("/permisos").param("search", "EMP-PRM-01"))
+                        .andReturn().getResponse().getContentAsString())
+                .get("content").get(0).get("id").asText());
+        var suspendBody = new Object() {
+            public String reactivationDate = LocalDate.now().plusDays(7).toString();
+        };
+        mockMvc.perform(patch("/permisos/{id}/suspend", permId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(suspendBody)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(patch("/permisos/{id}/reactivate", permId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVO"));
+    }
+
+    @Test
+    void reactivatePermission_nonExistent_returns404() throws Exception {
+        mockMvc.perform(patch("/permisos/{id}/reactivate", UUID.randomUUID()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Permiso no encontrado"));
+    }
+
+    @Test
+    void reactivatePermission_alreadyActive_returns400() throws Exception {
+        grantPermission();
+        UUID permId = UUID.fromString(objectMapper.readTree(
+                mockMvc.perform(get("/permisos").param("search", "EMP-PRM-01"))
+                        .andReturn().getResponse().getContentAsString())
+                .get("content").get(0).get("id").asText());
+
+        mockMvc.perform(patch("/permisos/{id}/reactivate", permId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("El permiso ya está activo"));
+    }
 }
