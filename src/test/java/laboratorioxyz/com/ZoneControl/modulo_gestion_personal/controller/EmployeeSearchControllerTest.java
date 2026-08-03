@@ -64,7 +64,7 @@ class EmployeeSearchControllerTest {
 
     @Test
     void searchEmployees_withFilters_returnsPaginatedResults() throws Exception {
-        mockMvc.perform(get("/personal")
+        mockMvc.perform(get("/api/personal")
                         .param("firstName", "Carlos")
                         .param("page", "0")
                         .param("size", "10"))
@@ -76,15 +76,18 @@ class EmployeeSearchControllerTest {
     }
 
     @Test
-    void searchEmployees_noFilters_returns400() throws Exception {
-        mockMvc.perform(get("/personal"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Debe seleccionar al menos un filtro de búsqueda"));
+    void searchEmployees_noFilters_returnsEmptyPage() throws Exception {
+        // Antes exigía al menos un filtro (400). Ahora se permite paginar sin
+        // filtros para que el selector de "Crear Usuario" pueda listar todos
+        // los candidatos sin necesidad de teclear criterios.
+        mockMvc.perform(get("/api/personal"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
     }
 
     @Test
     void searchEmployees_noResults_returnsEmptyPage() throws Exception {
-        mockMvc.perform(get("/personal")
+        mockMvc.perform(get("/api/personal")
                         .param("firstName", "NoExiste")
                         .param("page", "0")
                         .param("size", "10"))
@@ -106,7 +109,7 @@ class EmployeeSearchControllerTest {
                 .status(EmployeeStatus.ACTIVO)
                 .build());
 
-        mockMvc.perform(get("/personal")
+        mockMvc.perform(get("/api/personal")
                         .param("documentNumber", "222")
                         .param("page", "0")
                         .param("size", "10"))
@@ -138,7 +141,7 @@ class EmployeeSearchControllerTest {
                 .status(EmployeeStatus.ACTIVO)
                 .build());
 
-        mockMvc.perform(get("/personal")
+        mockMvc.perform(get("/api/personal")
                         .param("firstName", "Pedro")
                         .param("lastName", "Ramírez")
                         .param("page", "0")
@@ -150,7 +153,7 @@ class EmployeeSearchControllerTest {
 
     @Test
     void searchEmployees_byStatus_returnsFilteredResults() throws Exception {
-        mockMvc.perform(get("/personal")
+        mockMvc.perform(get("/api/personal")
                         .param("status", "ACTIVO")
                         .param("page", "0")
                         .param("size", "10"))
@@ -160,7 +163,7 @@ class EmployeeSearchControllerTest {
 
     @Test
     void getEmployeeById_exists_returns200() throws Exception {
-        mockMvc.perform(get("/personal/{id}", seedEmployee.getId()))
+        mockMvc.perform(get("/api/personal/{id}", seedEmployee.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.firstName").value("Carlos"))
                 .andExpect(jsonPath("$.lastName").value("Mendoza"))
@@ -169,7 +172,7 @@ class EmployeeSearchControllerTest {
 
     @Test
     void getEmployeeById_notFound_returns404() throws Exception {
-        mockMvc.perform(get("/personal/{id}", UUID.randomUUID()))
+        mockMvc.perform(get("/api/personal/{id}", UUID.randomUUID()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("Empleado no encontrado"));
     }
@@ -181,7 +184,7 @@ class EmployeeSearchControllerTest {
                 .position("Senior")
                 .build();
 
-        mockMvc.perform(patch("/personal/{id}", seedEmployee.getId())
+        mockMvc.perform(patch("/api/personal/{id}", seedEmployee.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateReq)))
                 .andExpect(status().isOk())
@@ -196,7 +199,7 @@ class EmployeeSearchControllerTest {
                 .status(EmployeeStatus.INACTIVO)
                 .build();
 
-        mockMvc.perform(patch("/personal/{id}", seedEmployee.getId())
+        mockMvc.perform(patch("/api/personal/{id}", seedEmployee.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateReq)))
                 .andExpect(status().isOk())
@@ -209,7 +212,7 @@ class EmployeeSearchControllerTest {
                 .status(EmployeeStatus.SUSPENDIDO)
                 .build();
 
-        mockMvc.perform(patch("/personal/{id}", seedEmployee.getId())
+        mockMvc.perform(patch("/api/personal/{id}", seedEmployee.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateReq)))
                 .andExpect(status().isOk())
@@ -222,7 +225,7 @@ class EmployeeSearchControllerTest {
                 .firstName("Test")
                 .build();
 
-        mockMvc.perform(patch("/personal/{id}", UUID.randomUUID())
+        mockMvc.perform(patch("/api/personal/{id}", UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateReq)))
                 .andExpect(status().isNotFound())
@@ -246,7 +249,7 @@ class EmployeeSearchControllerTest {
                 .documentNumber("6666666666")
                 .build();
 
-        mockMvc.perform(patch("/personal/{id}", seedEmployee.getId())
+        mockMvc.perform(patch("/api/personal/{id}", seedEmployee.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateReq)))
                 .andExpect(status().isConflict())

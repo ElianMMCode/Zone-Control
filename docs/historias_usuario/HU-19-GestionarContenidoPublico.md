@@ -18,6 +18,20 @@
 
 El sistema debe permitir al administrador editar la información institucional, los datos de contacto, la ubicación de sedes, el catálogo de servicios y productos farmacéuticos, así como cargar y actualizar el folleto informativo en formato PDF. El folleto debe cumplir con restricciones de formato y peso. Si no hay folleto cargado, el botón de descarga no debe mostrarse en el módulo público.
 
+## Contrato de los endpoints
+
+- `PUT /api/admin/contenido-publico/{INSTITUTIONAL|CONTACT|LOCATIONS}` (body `Record<string,string>`) → `{ message }`. Para INSTITUTIONAL/CONTACT reemplaza todos los pares clave-valor de la sección e invalida la caché pública correspondiente.
+- `POST /api/admin/contenido-publico/folleto` (multipart, campo `file`, PDF ≤ 10MB) → `{ message }`.
+- `DELETE /api/admin/contenido-publico/folleto` → `{ message }`.
+- `POST /api/admin/contenido-publico/sedes` (body `OfficeRequest{name, address, openingHours, latitude?, longitude?}`) → `{ id, name }` (201).
+- `PUT /api/admin/contenido-publico/sedes/{id}` (body `OfficeRequest`) → `{ id, name }`.
+- `DELETE /api/admin/contenido-publico/sedes/{id}` → `{ message }`.
+- `POST /api/admin/contenido-publico/productos` (body `ProductRequest{name, description, activeIngredient, presentation, productionArea}`) → `{ id, name }` (201).
+- `PUT /api/admin/contenido-publico/productos/{id}` (body `ProductRequest`) → `{ id, name }`.
+- `DELETE /api/admin/contenido-publico/productos/{id}` → `{ message }`.
+
+**Origen de los identificadores para editar/eliminar sedes y productos:** los GET públicos (`/api/public/sedes`, `/api/public/catalogo`) exponen el campo `id` para que el panel admin pueda referenciar cada elemento sin necesidad de un endpoint admin adicional. El landing ignora el `id`; el admin lo usa para los `PUT/DELETE /{id}`.
+
 ## Criterios de Aceptación
 
 Condición 01
@@ -100,14 +114,21 @@ Entonces: el sistema muestra los errores de validación correspondientes a los c
 | 2 | Implementar formularios de edición para información institucional, datos de contacto y ubicación de sedes |
 | 3 | Implementar CRUD del catálogo de servicios/productos (nombre, descripción, principio activo, presentación, área de producción) |
 | 4 | Implementar carga de archivo PDF para el folleto con validación de formato (.pdf) y tamaño máximo (10MB) |
-| 5 | Implementar endpoints PUT/POST /admin/contenido-publico en Spring Boot para cada sección |
-| 6 | Implementar endpoint POST /admin/contenido-publico/folleto (multipart/form-data) con validaciones de formato y peso |
-| 7 | Implementar endpoint DELETE /admin/contenido-publico/folleto para eliminar el folleto actual |
+| 5 | Implementar endpoints PUT/POST /api/admin/contenido-publico en Spring Boot para cada sección |
+| 6 | Implementar endpoint POST /api/admin/contenido-publico/folleto (multipart/form-data) con validaciones de formato y peso |
+| 7 | Implementar endpoint DELETE /api/admin/contenido-publico/folleto para eliminar el folleto actual |
 | 8 | Condicionar la visibilidad del botón "Descargar Folleto" en el módulo público a la existencia del archivo en el servidor |
 | 9 | Configurar almacenamiento de archivos en el servidor (directorio uploads/folleto/) |
+
+## Implementación (referencia)
+
+- **Backend:** ver "Contrato de los endpoints" arriba. La caché pública se invalida automáticamente en cada `PUT/POST/DELETE` para que el landing refleje los cambios sin reiniciar el servidor.
+- **Frontend:** ruta `/admin/contenido-publico` (rol ADMIN) con cinco pestañas (Institucional, Contacto, Sedes, Catálogo, Folleto) implementadas en `PublicContentView`. Formularios con RHF + Zod. Las pestañas Sedes y Catálogo hacen CRUD completo (listar/crear/editar/eliminar) usando el `id` que los GET públicos `sedes` y `catalogo` exponen en cada elemento.
+- **Validación de formulario (Condición 09):** los formularios institucionales, de contacto, sedes y productos validan con Zod; los campos obligatorios (mission, vision, description, phone, email, socialMedia, name, address) no se envían vacíos.
 
 ## Control de Versiones
 
 | Versión | Fecha | Autor | Revisión | Descripción | Aprobador |
 |---|---|---|---|---|---|
 | 1.0 | 2026-07-26 | | | Versión inicial | |
+| 1.1 | 2026-08-03 | | | GET públicos `sedes` y `catalogo` exponen `id` para que el panel admin referencie cada elemento al editar/eliminar; panel admin `/admin/contenido-publico` con 5 tabs implementado en el frontend. | |

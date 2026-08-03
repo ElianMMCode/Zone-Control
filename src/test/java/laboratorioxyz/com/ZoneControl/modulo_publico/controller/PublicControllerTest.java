@@ -20,7 +20,7 @@ class PublicControllerTest {
 
     @Test
     void getInstitutional_returns200() throws Exception {
-        mockMvc.perform(get("/public/institucional"))
+        mockMvc.perform(get("/api/public/institucional"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.info").isMap())
                 .andExpect(jsonPath("$.info.companyName").exists())
@@ -32,7 +32,7 @@ class PublicControllerTest {
 
     @Test
     void getContact_returns200() throws Exception {
-        mockMvc.perform(get("/public/contacto"))
+        mockMvc.perform(get("/api/public/contacto"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.contact").isMap())
                 .andExpect(jsonPath("$.contact.phone").exists())
@@ -42,9 +42,10 @@ class PublicControllerTest {
 
     @Test
     void getOffices_returns200() throws Exception {
-        mockMvc.perform(get("/public/sedes"))
+        mockMvc.perform(get("/api/public/sedes"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].id").exists())
                 .andExpect(jsonPath("$[0].name").exists())
                 .andExpect(jsonPath("$[0].address").exists())
                 .andExpect(jsonPath("$[0].latitude").exists())
@@ -53,9 +54,10 @@ class PublicControllerTest {
 
     @Test
     void getCatalog_returns200() throws Exception {
-        mockMvc.perform(get("/public/catalogo"))
+        mockMvc.perform(get("/api/public/catalogo"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].id").exists())
                 .andExpect(jsonPath("$[0].name").exists())
                 .andExpect(jsonPath("$[0].activeIngredient").exists())
                 .andExpect(jsonPath("$[0].presentation").exists())
@@ -65,7 +67,7 @@ class PublicControllerTest {
     @Test
     void getBrochure_notFound_returns404() throws Exception {
         new File("uploads/folleto/Folleto_Laboratorio_XYZ.pdf").delete();
-        mockMvc.perform(get("/public/folleto"))
+        mockMvc.perform(get("/api/public/folleto"))
                 .andExpect(status().isNotFound());
     }
 }
