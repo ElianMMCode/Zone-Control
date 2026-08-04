@@ -57,7 +57,7 @@ public class AdminUserServiceImpl implements AdminUserService {
      */
     @Override
     @Transactional
-    public Map<String, UUID> create(CreateUserRequest request) {
+    public Map<String, Object> create(CreateUserRequest request) {
         Employee employee = employeeRepository.findByEmployeeCode(request.getEmployeeCode())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Empleado no encontrado: " + request.getEmployeeCode()));
@@ -94,29 +94,92 @@ public class AdminUserServiceImpl implements AdminUserService {
         magicLinkNotifier.sendSetupLink(user.getEmail(),
                 user.getFirstName() + " " + user.getLastName(), rawToken);
         log.info("User {} created for employee {} (magic link enviado)", user.getId(), request.getEmployeeCode());
-        return Map.of("id", user.getId());
+        return Map.of(
+                "id", user.getId(),
+                "setupUrl", magicLinkNotifier.buildUrl(rawToken)
+        );
     }
 
     @Override
     @Transactional
     public Map<String, Object> updateStatus(UUID id, StatusUpdateRequest request, String currentUserEmail) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Usuario no encontrado"));
-
-        User currentUser = userRepository.findByEmail(currentUserEmail)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                        "No se pudo verificar el administrador actual"));
-
+        User user = findUserOrThrow(id);
+        User currentUser = findCurrentAdmin(currentUserEmail);
         UserStatus newStatus = UserStatus.valueOf(request.status().toUpperCase());
+        applyStatusChange(user, newStatus, currentUser);
+        log.info("User {} status changed to {} by admin {}", id, newStatus, currentUserEmail);
 
-        if (newStatus == UserStatus.INACTIVO && currentUser.getId().equals(user.getId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "No puedes desactivar tu propia cuenta");
+        return Map.of(
+                "id", user.getId(),
+                "status", user.getStatus().name(),
+                "employeeStatus", user.getEmployee().getStatus().name()
+        );
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> update(UUID id, UpdateUserRequest request, String currentUserEmail) {
+        User user = findUserOrThrow(id);
+        User currentUser = findCurrentAdmin(currentUserEmail);
+
+        if (!request.email().equals(user.getEmail())) {
+            if (userRepository.existsByEmail(request.email())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "El email ya está registrado");
+            }
+            user.setEmail(request.email());
         }
 
-        user.setStatus(newStatus);
+        applyStatusChange(user, request.status(), currentUser);
         userRepository.save(user);
+        log.info("User {} updated", id);
+
+        return Map.of(
+                "id", user.getId(),
+                "firstName", user.getFirstName(),
+                "lastName", user.getLastName(),
+                "email", user.getEmail(),
+                "role", user.getRole().name(),
+                "status", user.getStatus().name()
+        );
+    }
+
+    private User findUserOrThrow(UUID id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Usuario no encontrado"));
+    }
+
+    private User findCurrentAdmin(String principal) {
+        if (principal == null || principal.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "No se pudo verificar el administrador actual");
+        }
+        // El principal del SecurityContext es el ID del usuario (UUID) cuando la
+        // autenticación viene del JWT. En tests con @WithMockUser el principal es
+        // el email; por eso se intenta UUID primero y se cae a email.
+        try {
+            return userRepository.findById(UUID.fromString(principal))
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                            "No se pudo verificar el administrador actual"));
+        } catch (IllegalArgumentException e) {
+            return userRepository.findByEmail(principal)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                            "No se pudo verificar el administrador actual"));
+        }
+    }
+
+    /**
+     * Cambia el estado del usuario y aplica la cascada al empleado y a sus
+     * permisos de acceso (INACTIVO → empleado INACTIVO + permisos SUSPENDIDO;
+     * ACTIVO → restaura). Rechaza desactivar la propia cuenta.
+     */
+    private void applyStatusChange(User user, UserStatus newStatus, User currentUser) {
+        if (newStatus == UserStatus.INACTIVO && currentUser.getId().equals(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "No puede desactivar su propia cuenta");
+        }
+        user.setStatus(newStatus);
 
         Employee employee = user.getEmployee();
         employee.setStatus(newStatus == UserStatus.INACTIVO
@@ -130,61 +193,6 @@ public class AdminUserServiceImpl implements AdminUserService {
         if (!permissions.isEmpty()) {
             accessPermissionRepository.saveAll(permissions);
         }
-
-        log.info("User {} status changed to {} by admin {}", id, newStatus, currentUserEmail);
-
-        return Map.of(
-                "id", user.getId(),
-                "status", user.getStatus().name(),
-                "employeeStatus", employee.getStatus().name()
-        );
-    }
-
-    @Override
-    @Transactional
-    public Map<String, Object> update(UUID id, UpdateUserRequest request) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Usuario no encontrado"));
-
-        if (request.email() != null && !request.email().equals(user.getEmail())) {
-            if (userRepository.existsByEmail(request.email())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        "El email ya está registrado");
-            }
-            user.setEmail(request.email());
-        }
-        if (request.firstName() != null) {
-            user.setFirstName(request.firstName());
-        }
-        if (request.lastName() != null) {
-            user.setLastName(request.lastName());
-        }
-        if (request.role() != null) {
-            user.setRole(request.role());
-        }
-        if (request.employeeCode() != null) {
-            Employee employee = employeeRepository.findByEmployeeCode(request.employeeCode())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                            "Empleado no encontrado: " + request.employeeCode()));
-            if (userRepository.findByEmployee_Id(employee.getId())
-                    .filter(existing -> !existing.getId().equals(user.getId())).isPresent()) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        "El empleado ya tiene un usuario de sistema asociado");
-            }
-            user.setEmployee(employee);
-        }
-
-        userRepository.save(user);
-        log.info("User {} updated", id);
-
-        return Map.of(
-                "id", user.getId(),
-                "firstName", user.getFirstName(),
-                "lastName", user.getLastName(),
-                "email", user.getEmail(),
-                "role", user.getRole().name()
-        );
     }
 
     /**
@@ -220,7 +228,10 @@ public class AdminUserServiceImpl implements AdminUserService {
         magicLinkNotifier.sendSetupLink(employee.getEmail(),
                 user.getFirstName() + " " + user.getLastName(), rawToken);
         log.info("Password reset for user {} (magic link enviado)", id);
-        return new ResetPasswordResponse("Enlace de configuración enviado al correo del usuario");
+        return new ResetPasswordResponse(
+                "Enlace de configuración enviado al correo del usuario",
+                magicLinkNotifier.buildUrl(rawToken)
+        );
     }
 
     @Override
@@ -310,6 +321,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .role(user.getRole())
                 .status(user.getStatus())
                 .requirePasswordChange(user.isRequirePasswordChange())
+                .pendienteActivacion(user.getSetupToken() != null)
                 .employeeCode(user.getEmployee().getEmployeeCode())
                 .position(user.getEmployee().getPosition())
                 .build();

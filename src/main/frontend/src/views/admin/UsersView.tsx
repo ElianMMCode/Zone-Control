@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { StatCard } from "@/components/common/StatCard";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
+import { useAuth } from "@/hooks/useAuth";
 import { Select, SelectField, Option } from "@/components/ui/Select";
 import { ErrorState, EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton, TableRowSkeleton } from "@/components/ui/Skeleton";
@@ -26,6 +27,7 @@ import type {
 } from "@/types";
 
 export function UsersView() {
+  const { user: currentUser } = useAuth();
   const [search, setSearch] = useState("");
   const [role, setRole] = useState<Role | "">("");
   const [status, setStatus] = useState<UserStatus | "">("");
@@ -61,6 +63,7 @@ export function UsersView() {
     update,
     updateStatus,
     resetPassword,
+    error,
     loading: mutating,
   } = useUserMutations();
 
@@ -83,9 +86,9 @@ export function UsersView() {
           <Skeleton className="h-28 w-full rounded-lg" />
         ) : (
           <StatCard
-            label="Pendientes de Revisión"
+            label="Pendientes de activación de usuario"
             value={formatNumber(candidates.data?.totalElements ?? 0)}
-            delta="Empleados candidatos a ser usuarios"
+            delta="Empleados sin cuenta de sistema"
             icon="pending_actions"
             tone={candidates.data && candidates.data.totalElements > 0 ? "secondary" : "primary"}
           />
@@ -115,6 +118,8 @@ export function UsersView() {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <div className="md:col-span-2">
             <SearchInput
+              id="filter-search"
+              label="Buscar"
               value={search}
               onChange={(v) => {
                 setSearch(v);
@@ -170,7 +175,7 @@ export function UsersView() {
               </thead>
               <tbody>
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <TableRowSkeleton key={i} cols={6} />
+                  <TableRowSkeleton key={i} cols={7} />
                 ))}
               </tbody>
             </table>
@@ -184,6 +189,7 @@ export function UsersView() {
               onEdit={(u) => setEditing(u)}
               onToggleStatus={(u) => setToggling(u)}
               onResetPassword={(u) => setResetting(u)}
+              currentUserId={currentUser?.id}
             />
             <Pagination
               page={data.data.number}
@@ -215,7 +221,7 @@ export function UsersView() {
             toast.success("Usuario actualizado");
             data.refresh();
           } else {
-            toast.error("No se pudo actualizar el usuario");
+            toast.error(error?.message ?? "No se pudo actualizar el usuario");
           }
           return ok;
         }}
@@ -250,7 +256,7 @@ export function UsersView() {
             data.refresh();
             setToggling(null);
           } else {
-            toast.error("No se pudo cambiar el estado");
+            toast.error(error?.message ?? "No se pudo cambiar el estado");
           }
         }}
       />
@@ -260,20 +266,21 @@ export function UsersView() {
         title="Restablecer contraseña"
         message={
           resetting
-            ? `Se enviará un nuevo enlace de configuración a ${resetting.email}.`
+            ? `Se abrirá una nueva ventana para configurar la contraseña de ${resetting.email}. La contraseña actual dejará de ser válida y el enlace expirará en 24 horas.`
             : ""
         }
-        confirmLabel="Enviar enlace"
+        confirmLabel="Abrir configuración"
         loading={mutating}
         onCancel={() => setResetting(null)}
         onConfirm={async () => {
           if (!resetting) return;
-          const msg = await resetPassword(resetting.id);
-          if (msg) {
-            toast.success(msg);
+          const res = await resetPassword(resetting.id);
+          if (res) {
+            toast.success(res.message);
+            window.open(res.setupUrl, "_blank", "noopener");
             setResetting(null);
           } else {
-            toast.error("No se pudo enviar el enlace");
+            toast.error(error?.message ?? "No se pudo enviar el enlace");
           }
         }}
       />

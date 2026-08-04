@@ -279,6 +279,7 @@ Crear `import.sql` o `DataInitializer` que inserte:
   - Los `id` de sedes y productos se exponen en la respuesta pública para que el panel admin de HU-19 pueda referenciar cada elemento al editar/eliminar sin necesidad de un endpoint admin con id. El landing los ignora; el admin los usa para los `PUT/DELETE /{id}`.
 - Cachear respuestas (Spring Cache con ConcurrentMapCacheManager)
 - TDD: tests de integración verificando HTTP 200 y estructura JSON (incluyendo el `id`)
+- **Pendiente**: el criterio HU-01 cond. 03 pide "un mapa de ubicación" en el landing; por ahora `LocationsSection` muestra lat/long como texto. Implementar mapa embebido (iframe/leaflet) queda como pendiente.
 
 **HU-02: Descargar Folleto**
 - `GET /api/public/folleto` — servir PDF estático
@@ -287,7 +288,7 @@ Crear `import.sql` o `DataInitializer` que inserte:
 
 **HU-19: Gestionar Contenido Público (requiere Fase 2 — auth)**
 - CRUD de contenido público (solo ADMIN)
-- PUT/POST `/api/admin/contenido-publico/{seccion}` (`INSTITUTIONAL`|`CONTACT`|`LOCATIONS`; body `Record<string,string>`; PUT invalida la caché pública)
+- PUT/POST `/api/admin/contenido-publico/{seccion}` (`INSTITUTIONAL`|`CONTACT`; body `Record<string,string>`; PUT invalida la caché pública). Las sedes se gestionan solo vía el CRUD `sedes[/{id}]`.
 - POST `/api/admin/contenido-publico/folleto` (multipart, validar .pdf, max 10MB)
 - DELETE `/api/admin/contenido-publico/folleto`
 - CRUD de sedes: POST/PUT/DELETE `/api/admin/contenido-publico/sedes[/{id}]` con `OfficeRequest`
@@ -314,7 +315,7 @@ Crear `import.sql` o `DataInitializer` que inserte:
 - TDD: 4 condiciones de aceptación → 4 tests
 
 - **Adicional (dashboard admin)**: `GET /api/admin/stats` — contadores agregados para las tarjetas KPI del dashboard del administrador (usuarios por estado, pendientes de configuración de contraseña, empleados, permisos). Solo ADMIN. TDD: 1 test de conteos delta.
-- **Adicional (ajustes)**: `POST /api/auth/change-password` — cambio de contraseña voluntario por el usuario autenticado. Requiere token JWT válido (SecurityConfig: regla auth/change-password → authenticated() antes del permitAll de /api/auth/**). TDD: 5 tests (éxito, actual incorrecta, misma contraseña, validación, sin token).
+- **Adicional (ajustes)**: `POST /api/auth/change-password` — cambio de contraseña voluntario por el usuario autenticado. Requiere token JWT válido (SecurityConfig: regla auth/change-password → authenticated() antes del permitAll de /api/auth/**). TDD: 5 tests (éxito, actual incorrecta, misma contraseña, validación, sin token). Además, `PUT /api/auth/profile` permite al usuario editar sus propios datos de cuenta (nombre, apellido y correo; valida correo único → 409). TDD: 4 tests (éxito, email duplicado, validación, sin token).
 
 ### Fase 3 — Administración (HU-05, HU-06, HU-07, HU-08)
 
@@ -328,9 +329,11 @@ Crear `import.sql` o `DataInitializer` que inserte:
 - TDD: test creación exitosa (retorna id + token), email duplicado, empleado sin email, empleado ya vinculado
 
 **HU-06: Editar Usuario**
-- `PUT /api/admin/users/{id}`
-- Validar nuevo email no duplicado (excluyendo al mismo usuario)
-- HTTP 404 si usuario no existe
+- `PUT /api/admin/users/{id}` — body `{ email, status }`: el admin edita el correo y el estado
+- Nombre/apellido/cargo reflejan al `Employee` vinculado (se gestionan en Gestión de Personal); el rol se asigna en la creación (HU-05)
+- El cambio de estado reutiliza la cascada del toggle (HU-07): guard de auto-desactivación y suspensión/restauración de empleado y permisos
+- Validar nuevo email no duplicado (HTTP 409, excluyendo al mismo usuario) y HTTP 404 si el usuario no existe
+- Frontend: modal de edición con los datos del usuario en solo lectura (nombre, rol, código) + campos email y estado editables
 - TDD: test actualización exitosa, email duplicado, usuario inexistente
 
 **HU-07: Activar/Desactivar Usuario**
@@ -483,6 +486,7 @@ Comentar exclusivamente decisiones no obvias:
 - `ResponseStatusException` → HTTP 400/404/409/401 según el status lanzado desde servicios/controllers
 - `AccessDeniedException` → HTTP 403
 - `DataIntegrityViolationException` → HTTP 409 (gap 1.7 §9, implementado)
+- `MaxUploadSizeExceededException` → HTTP 400 "El archivo excede el tamaño máximo permitido de 10MB" (folleto HU-19, §9 1.7)
 - `Exception` genérica → HTTP 500 (gap 1.7 §9, implementado)
 
 ### Logging
@@ -506,6 +510,7 @@ Usar SLF4J + Logback. Registrar en cada operación crítica:
 | GET | /api/public/folleto | No | Público | 02 |
 | POST | /api/auth/login | No | Autenticación | 03 |
 | POST | /api/auth/change-password | Autenticado | Autenticación | 03 |
+| PUT | /api/auth/profile | Autenticado | Autenticación | 03 |
 | GET | /api/setup-password?token= | No | Autenticación | 05/08 |
 | POST | /api/setup-password | No | Autenticación | 05/08 |
 | GET | /api/admin/users | Admin | Administración | 05 |
@@ -545,6 +550,8 @@ Usar SLF4J + Logback. Registrar en cada operación crítica:
 | PATCH | /api/permisos/{id}/suspend | Gestor/Admin | Gestión Personal | 13 |
 | PATCH | /api/permisos/{id}/reactivate | Gestor/Admin | Gestión Personal | 13 |
 | POST | /api/access/validate | Admin, Supervisor | Control Acceso | 18 |
+| GET | /api/access/alerts | Admin, Supervisor | Control Acceso | 23 |
+| PATCH | /api/access/alerts/{id}/leido | Admin, Supervisor | Control Acceso | 23 |
 | GET | /api/historial | Supervisor/Admin | Reportes | 15 |
 | GET | /api/historial/stats | Supervisor/Admin | Reportes | — |
 | POST | /api/historial/export | Supervisor/Admin | Reportes | 16 |
@@ -618,13 +625,13 @@ Los mockups finales en `.stitch/screens/` (marca Laboratorio XYZ) asumen funcion
 | Mockup | Funcionalidad asumida | Estado en backend |
 |--------|----------------------|-------------------|
 | `22_...gesti-n-de-reas-de-producci-n` | CRUD de áreas de producción y terminales biométricos | CRUD de áreas **implementado** (`POST/PUT/DELETE /api/permisos/areas`, §9 item 1.4) y frontend en `/admin/areas`. Terminales biométricos: no existen → pendiente de decidir |
-| `16_...matriz-de-roles-y-permisos` | Matriz de roles/api/permisos (consulta) | Roles fijos en `SecurityConfig` (ADMIN, GESTOR_PERSONAL, SUPERVISOR_AUDITOR). Vista frontend **implementada** en `/admin/matriz-roles` (solo lectura, reconstruida de `SecurityConfig`). **Pendiente** endpoint `GET /api/admin/role-matrix` (HU-27, opcional según §9 fase B) |
+| `16_...matriz-de-roles-y-permisos` | Matriz de roles/api/permisos (consulta) | Roles fijos en `SecurityConfig` (ADMIN, GESTOR_PERSONAL, SUPERVISOR_AUDITOR). Endpoint `GET /api/admin/role-matrix` **implementado** (HU-27, §9 item 1.5) y vista frontend `/admin/matriz-roles` que lo consume con fallback estático |
 | `28_...dashboard-de-administraci-n` | Mapa de accesos en tiempo real, "Súper Usuario" | Ocupación/zonas en vivo **implementadas** (§9.3 2.1–2.4) para ADMIN/SUPERVISOR (`/supervisor/zones`). El "Súper Usuario" y el mapa geográfico del mockup 28 siguen sin implementar |
 | `09_...panel-de-supervisi-n-corporativo` | Estado de zonas (A-12, B-04) y alertas críticas en vivo | Zonas y alertas en vivo **implementadas** (`/supervisor/zones`); las zonas del seed son Sala Blanca A/B, Laboratorio QC, Almacén Controlado, Zona de Empaque (no A-12/B-04). Decorativo en los nombres |
 | `42_...registro-de-personal` | Fotografía del empleado (opcional) | **Implementado** (HU-25, §9 item 3.1): `POST/GET/DELETE /api/personal/{id}/photo` + frontend en registro y detalle |
 | `46_...inicio-de-sesi-n-interno` | "¿Olvidó su contraseña?" | No hay flujo público de recovery; solo reset vía `POST /api/admin/users/{id}/reset-password` (magic link) |
 | `37_...reportes-de-auditor-a` | Exportar PDF | **Implementado** (gap 1.1 §9): PDF en `/api/historial/export` y archivo periódico (itextpdf 5, `PdfExporter`); frontend en `/supervisor/reportes` con botón PDF |
-> **Cobertura:** la funcionalidad de los mockups 22 (CRUD áreas — backend ✓, frontend `/admin/areas`), 42 (foto — implementada), 44 (validación — frontend `/supervisor/validar`), 37 (reportes — CSV/Excel/**PDF** + agregación por departamento implementados) y 16 (matriz — frontend `/admin/matriz-roles`, endpoint pendiente) está incorporada a la hoja de ruta de la §9. Lo que queda en la §9: 28/09 (mapa y alertas en vivo, §9.3), endpoint de matriz (§9.2 1.5), tiempo real (§9.3 2.x) y turnos (§9.4 3.2). El flujo público de "¿Olvidó su contraseña?" (mockup 46) y la edición real de la matriz de permisos quedan fuera de alcance de §9.
+> **Cobertura:** la funcionalidad de los mockups 22 (CRUD áreas — backend ✓, frontend `/admin/areas`), 42 (foto — implementada), 44 (validación — frontend `/supervisor/validar`), 37 (reportes — CSV/Excel/**PDF** + agregación por departamento implementados) y 16 (matriz — endpoint `GET /api/admin/role-matrix` + frontend `/admin/matriz-roles`, §9 item 1.5) está incorporada a la hoja de ruta de la §9. Lo que queda en la §9: 28/09 (mapa y alertas en vivo, §9.3) y turnos (§9.4 3.2). El flujo público de "¿Olvidó su contraseña?" (mockup 46) y la edición real de la matriz de permisos quedan fuera de alcance de §9.
 
 ---
 
@@ -749,7 +756,7 @@ Decisiones de diseño confirmadas:
   - Acceso autorizado entre 00:00-05:00 → alerta baja.
   - Cierre/reapertura de zona → alerta media.
 - Persistencia + emisión SSE (`alert.created`).
-- `GET /api/access/alerts?desde=&leido=` (ADMIN/SUPERVISOR) para el panel.
+- `GET /api/access/alerts?desde=&leido=` (ADMIN/SUPERVISOR) para el panel. `PATCH /api/access/alerts/{id}/leido` marca una alerta como leída (implementado; consumido por `SecurityAlertsPanel` del dashboard del admin).
 - **Tests**: disparo por 3 denegaciones, disparo nocturno, no-disparo en condiciones normales, listar alertas.
 - **Esfuerzo**: medio (2-3 días).
 

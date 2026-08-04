@@ -155,7 +155,7 @@ class AdminUserControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("status", "INACTIVO"))))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("No puedes desactivar tu propia cuenta"));
+                .andExpect(jsonPath("$.error").value("No puede desactivar su propia cuenta"));
     }
 
     @Test
@@ -180,16 +180,14 @@ class AdminUserControllerTest {
         mockMvc.perform(put("/api/admin/users/{id}", testUser.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "firstName", "Updated",
-                                "lastName", "Name",
                                 "email", "updated@test.com",
-                                "role", "ADMIN"
+                                "status", "ACTIVO"
                         ))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.firstName").value("Updated"))
-                .andExpect(jsonPath("$.lastName").value("Name"))
                 .andExpect(jsonPath("$.email").value("updated@test.com"))
-                .andExpect(jsonPath("$.role").value("ADMIN"));
+                .andExpect(jsonPath("$.status").value("ACTIVO"))
+                .andExpect(jsonPath("$.firstName").value(testUser.getFirstName()))
+                .andExpect(jsonPath("$.role").value(testUser.getRole().name()));
     }
 
     @Test
@@ -198,7 +196,10 @@ class AdminUserControllerTest {
 
         mockMvc.perform(put("/api/admin/users/{id}", testUser.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("email", admin.getEmail()))))
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "email", admin.getEmail(),
+                                "status", "ACTIVO"
+                        ))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("El email ya está registrado"));
     }
@@ -207,7 +208,10 @@ class AdminUserControllerTest {
     void updateUser_nonExistentUser_returns404() throws Exception {
         mockMvc.perform(put("/api/admin/users/{id}", UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("firstName", "Any"))))
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "email", "cualquiera@test.com",
+                                "status", "ACTIVO"
+                        ))))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("Usuario no encontrado"));
     }
@@ -217,7 +221,8 @@ class AdminUserControllerTest {
         mockMvc.perform(post("/api/admin/users/{id}/reset-password", testUser.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message")
-                        .value("Enlace de configuración enviado al correo del usuario"));
+                        .value("Enlace de configuración enviado al correo del usuario"))
+                .andExpect(jsonPath("$.setupUrl").isString());
 
         User afterReset = userRepository.findById(testUser.getId()).orElseThrow();
         assertThat(afterReset.getPassword()).isNull();
@@ -284,7 +289,8 @@ class AdminUserControllerTest {
                                 "status", "ACTIVO"
                         ))))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").isString());
+                .andExpect(jsonPath("$.id").isString())
+                .andExpect(jsonPath("$.setupUrl").isString());
 
                 assertThat(userRepository.findByEmployee_Id(fresh.getId()))
                         .hasValueSatisfying(u -> {

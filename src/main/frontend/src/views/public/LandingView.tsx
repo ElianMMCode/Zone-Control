@@ -13,27 +13,20 @@ import { usePublicData } from "@/hooks/usePublicData";
 export function LandingView() {
   const data = usePublicData();
   const { info } = data.institutional ?? {};
-  const productionAreas = info?.productionAreas
-    ? info.productionAreas.split(", ").map((s) => s.trim()).filter(Boolean)
-    : [];
 
   return (
-    <div className="min-h-screen scroll-smooth bg-public-surface text-public-on-surface">
+    <div className="min-h-screen bg-public-surface text-public-on-surface">
       <PublicNavbar />
 
       {data.error ? (
         <div className="mx-auto max-w-[1280px] px-6 py-16">
-          <ErrorState
-            message={data.error}
-            onRetry={data.refresh}
-          />
+          <ErrorState message={data.error} onRetry={data.refresh} />
         </div>
       ) : (
         <>
           <HeroSection
             companyName={info?.companyName ?? "Laboratorio XYZ"}
             description={info?.description}
-            productionAreas={productionAreas}
           />
           <AboutSection
             mission={info?.mission}

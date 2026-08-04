@@ -1,15 +1,18 @@
 import { useMemo } from "react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
+import { QuickActions } from "@/components/common/QuickActions";
 import { StatCardSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { useResource } from "@/hooks/useResource";
+import { useAuth } from "@/hooks/useAuth";
 import { userListQuery } from "@/hooks/useUsers";
 import { PendingUsersPanel } from "@/components/domain/PendingUsersPanel";
 import { RecentActivityList } from "@/components/domain/RecentActivityList";
 import { CandidateEmployeesPanel } from "@/components/domain/CandidateEmployeesPanel";
+import { SecurityAlertsPanel } from "@/components/domain/SecurityAlertsPanel";
 import { formatNumber } from "@/lib/format";
 import type {
   AccessHistoryResponse,
@@ -29,6 +32,7 @@ function percent(value: number, total: number): number {
 }
 
 export function AdminDashboard() {
+  const { user: currentUser } = useAuth();
   const stats = useResource<AdminStatsResponse>("/api/admin/stats");
 
   const pendingQuery = useMemo(() => userListQuery({ pendientesConfiguracion: true, size: 20 }), []);
@@ -61,7 +65,7 @@ export function AdminDashboard() {
     <div className="space-y-8">
       <PageHeader
         title="Panel de Administración"
-        subtitle="Resumen general del sistema ZoneControl"
+        subtitle="Resumen general del sistema"
         actions={
           <Button variant="ghost" onClick={refreshAll}>
             <Icon name="refresh" size="sm" /> Actualizar
@@ -108,6 +112,19 @@ export function AdminDashboard() {
         </div>
       ) : null}
 
+      <QuickActions
+        actions={[
+          { label: "Crear usuario", icon: "person_add", to: "/admin/usuarios/nuevo", description: "Vincular un empleado como usuario del sistema" },
+          { label: "Gestión de usuarios", icon: "group", to: "/admin/usuarios" },
+          { label: "Contenido público", icon: "public", to: "/admin/contenido-publico" },
+          { label: "Áreas de producción", icon: "domain", to: "/admin/areas" },
+          { label: "Matriz de roles", icon: "verified_user", to: "/admin/matriz-roles" },
+          { label: "Exportar historial", icon: "summarize", to: "/supervisor/reportes" },
+        ]}
+      />
+
+      <SecurityAlertsPanel />
+
       <CandidateEmployeesPanel
         candidates={candidates.data?.content ?? []}
         loading={candidates.loading}
@@ -122,6 +139,7 @@ export function AdminDashboard() {
           error={pendingUsers.error ? { message: pendingUsers.error.message } : null}
           onRefresh={pendingUsers.refresh}
           onResolved={pendingUsers.refresh}
+          currentUserId={currentUser?.id}
         />
         <RecentActivityList
           events={history.data?.content ?? []}
@@ -130,19 +148,6 @@ export function AdminDashboard() {
           onRefresh={history.refresh}
         />
       </div>
-
-      <section className="card">
-        <header className="card-header">
-          <h2 className="text-heading-md">Monitoreo Geográfico</h2>
-          <span className="label-caps">Próximamente</span>
-        </header>
-        <div className="flex flex-col items-center gap-2 py-6 text-center text-on-surface-variant">
-          <span className="rounded-full bg-surface-container p-4 text-primary">
-            <Icon name="map" size="lg" />
-          </span>
-          <p className="text-body-sm">Mapa de accesos en tiempo real — disponible próximamente.</p>
-        </div>
-      </section>
     </div>
   );
 }

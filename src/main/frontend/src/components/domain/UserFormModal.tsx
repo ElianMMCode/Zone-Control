@@ -5,13 +5,12 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/Input";
 import { Select, SelectField, Option } from "@/components/ui/Select";
-import type { Role, UpdateUserRequest, UserResponse, UserStatus } from "@/types";
+import { RolePill } from "@/components/common/RolePill";
+import { StatusPill } from "@/components/common/StatusPill";
+import type { UpdateUserRequest, UserResponse, UserStatus } from "@/types";
 
 const schema = z.object({
-  firstName: z.string().min(2, "Mínimo 2 caracteres").max(35),
-  lastName: z.string().min(2, "Mínimo 2 caracteres").max(35),
   email: z.string().email("Email inválido").max(100),
-  role: z.enum(["ADMIN", "GESTOR_PERSONAL", "SUPERVISOR_AUDITOR"]),
   status: z.enum(["ACTIVO", "INACTIVO"]),
 });
 
@@ -36,18 +35,12 @@ export function UserFormModal({
     reset,
     formState: { errors },
   } = useForm<FormValues>({
-    defaultValues: { firstName: "", lastName: "", email: "", role: "GESTOR_PERSONAL" as Role, status: "ACTIVO" as UserStatus },
+    defaultValues: { email: "", status: "ACTIVO" as UserStatus },
   });
 
   useEffect(() => {
     if (user) {
-      reset({
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-        status: user.status,
-      });
+      reset({ email: user.email, status: user.status });
     }
   }, [user, reset]);
 
@@ -73,32 +66,40 @@ export function UserFormModal({
       }
     >
       <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <FormField id="firstName" label="Nombre" error={errors.firstName?.message} required>
-            <input id="firstName" className="input" aria-invalid={!!errors.firstName} {...register("firstName")} />
-          </FormField>
-          <FormField id="lastName" label="Apellido" error={errors.lastName?.message} required>
-            <input id="lastName" className="input" aria-invalid={!!errors.lastName} {...register("lastName")} />
-          </FormField>
-        </div>
+        {user ? (
+          <div className="grid grid-cols-2 gap-3 rounded-md border border-outline-variant bg-surface-container-low p-4 text-body-sm">
+            <div>
+              <span className="label-caps">Nombre completo</span>
+              <p className="mt-1 text-on-surface">{user.firstName} {user.lastName}</p>
+            </div>
+            <div>
+              <span className="label-caps">Código empleado</span>
+              <p className="mt-1 font-mono text-on-surface">{user.employeeCode}</p>
+            </div>
+            <div>
+              <span className="label-caps">Rol</span>
+              <p className="mt-1"><RolePill role={user.role} /></p>
+            </div>
+            <div>
+              <span className="label-caps">Estado actual</span>
+              <p className="mt-1"><StatusPill status={user.status} /></p>
+            </div>
+          </div>
+        ) : null}
+        <p className="text-body-sm text-on-surface-variant">
+          Nombre, apellido y cargo reflejan al empleado vinculado y se gestionan
+          en Gestión de Personal. El rol se asigna en la creación. Aquí puedes
+          cambiar el correo y el estado.
+        </p>
         <FormField id="email" label="Email" error={errors.email?.message} required>
           <input id="email" type="email" className="input" aria-invalid={!!errors.email} {...register("email")} />
         </FormField>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <SelectField id="role" label="Rol" error={errors.role?.message} required>
-            <Select id="role" {...register("role")}>
-              <Option value="ADMIN">Admin</Option>
-              <Option value="GESTOR_PERSONAL">Gestor Personal</Option>
-              <Option value="SUPERVISOR_AUDITOR">Supervisor Auditor</Option>
-            </Select>
-          </SelectField>
-          <SelectField id="status" label="Estado" error={errors.status?.message} required>
-            <Select id="status" {...register("status")}>
-              <Option value="ACTIVO">Activo</Option>
-              <Option value="INACTIVO">Inactivo</Option>
-            </Select>
-          </SelectField>
-        </div>
+        <SelectField id="status" label="Estado" error={errors.status?.message} required>
+          <Select id="status" {...register("status")}>
+            <Option value="ACTIVO">Activo</Option>
+            <Option value="INACTIVO">Inactivo</Option>
+          </Select>
+        </SelectField>
       </form>
     </Modal>
   );
