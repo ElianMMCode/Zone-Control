@@ -21,7 +21,7 @@ export type EmployeeStatus = "ACTIVO" | "INACTIVO" | "SUSPENDIDO";
 export type PermissionStatus = "ACTIVO" | "SUSPENDIDO";
 export type AccessResult = "AUTHORIZED" | "DENIED" | "UNREGISTERED" | "SUSPENDED";
 export type DocumentType = "CC" | "CE" | "TI" | "PA" | "RC";
-export type ReportFormat = "CSV" | "EXCEL";
+export type ReportFormat = "CSV" | "EXCEL" | "PDF";
 export type ContentSection = "INSTITUTIONAL" | "CONTACT" | "LOCATIONS";
 
 export type ContractType =
@@ -32,3 +32,4 @@ export type ContractType =
   | "PRACTICANTE";
 
 export type WorkShift = "DIURNO" | "NOCTURNO" | "MIXTO";
+export type WeekDay = "LUN" | "MAR" | "MIE" | "JUE" | "VIE" | "SAB" | "DOM";

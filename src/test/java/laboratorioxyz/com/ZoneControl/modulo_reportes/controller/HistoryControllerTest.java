@@ -24,14 +24,15 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -126,6 +127,64 @@ class HistoryControllerTest {
     }
 
     @Test
+    void getHistory_filterByDepartment_returnsOnlyMatching() throws Exception {
+        Department produccion = departmentRepository.findByName("Producción Sólidos").orElseThrow();
+        Employee emp = employeeRepository.save(Employee.builder()
+                .employeeCode("EMP-DEPT-01")
+                .documentType(DocumentType.CC)
+                .documentNumber("7777777001")
+                .firstName("Depto")
+                .lastName("Test")
+                .position("Operario")
+                .department(produccion)
+                .status(EmployeeStatus.ACTIVO)
+                .build());
+        accessHistoryRepository.save(AccessHistory.builder()
+                .employee(emp)
+                .department(produccion.getName())
+                .productionAreaName("Sala Blanca B")
+                .timestamp(LocalDateTime.of(2026, 7, 10, 9, 0))
+                .result(AccessResult.AUTHORIZED)
+                .build());
+
+        mockMvc.perform(get("/api/historial")
+                        .param("fechaInicio", "2026-07-01")
+                        .param("fechaFin", "2026-07-31")
+                        .param("department", "Producción Sólidos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].department").value("Producción Sólidos"));
+    }
+
+    @Test
+    void exportHistory_filterByDepartment_appliesFilter() throws Exception {
+        mockMvc.perform(post("/api/historial/export")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "formato", "CSV",
+                                "fechaInicio", "2026-07-01",
+                                "fechaFin", "2026-07-31",
+                                "departamentoName", "Control de Calidad"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith("text/csv"));
+    }
+
+    @Test
+    void exportHistory_departmentWithoutData_returns400() throws Exception {
+        mockMvc.perform(post("/api/historial/export")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "formato", "CSV",
+                                "fechaInicio", "2026-07-01",
+                                "fechaFin", "2026-07-31",
+                                "departamentoName", "Departamento Inexistente"
+                        ))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("No hay datos para exportar"));
+    }
+
+    @Test
     void exportHistory_validCsv_returns200() throws Exception {
         mockMvc.perform(post("/api/historial/export")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -150,6 +209,35 @@ class HistoryControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+    }
+
+    @Test
+    void exportHistory_validPdf_returns200() throws Exception {
+        MvcResult res = mockMvc.perform(post("/api/historial/export")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "formato", "PDF",
+                                "fechaInicio", "2026-07-01",
+                                "fechaFin", "2026-07-31"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith("application/pdf"))
+                .andReturn();
+        assertTrue(res.getResponse().getContentAsByteArray().length > 0,
+                "El PDF debe contener bytes");
+    }
+
+    @Test
+    void exportHistory_invalidFormat_returns400() throws Exception {
+        mockMvc.perform(post("/api/historial/export")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "formato", "XML",
+                                "fechaInicio", "2026-07-01",
+                                "fechaFin", "2026-07-31"
+                        ))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Formato no soportado: XML"));
     }
 
     @Test

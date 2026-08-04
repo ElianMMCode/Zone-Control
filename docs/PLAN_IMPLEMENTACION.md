@@ -119,7 +119,9 @@ Módulos: `modulo_publico`, `modulo_autenticacion`, `modulo_administracion`, `mo
 
 ### 1.3 Proyecto Frontend — React
 
-Crear fuera del backend (directorio hermano `ZoneControl-Frontend`), con Vite + React + TypeScript:
+> **Nota de estado**: la instrucción original era crearlo como directorio hermano. Actualmente el frontend vive **dentro del repo** en `src/main/frontend/` (React 19 + TypeScript 6 + Vite 8 + Tailwind 4), con el build en `src/main/resources/static/`. Ver `AGENTS.md` para el estado detallado de rutas y vistas.
+
+Original (para contexto) — con Vite + React + TypeScript:
 
 ```bash
 npm create vite@latest ZoneControl-Frontend -- --template react-ts
@@ -422,16 +424,16 @@ Crear `import.sql` o `DataInitializer` que inserte:
 - TDD: test consulta con datos, sin datos, rango inválido
 
 **HU-16: Generar Documento Descargable**
-- `POST /api/historial/export` — body: { "formato": "CSV"|"EXCEL", "filtros": {...} }
+- `POST /api/historial/export` — body: { "formato": "CSV"|"EXCEL"|"PDF", "filtros": {...} }
 - Generar archivo con encabezado, fecha, filtros, tabla de datos, resumen estadístico
-- **Implementado solo CSV y EXCEL** (Apache POI). **PDF pendiente** (pom incluye itextpdf 5 pero no se usa aún)
-- `ExportRequest` acepta `employeeCode`, `resultado`, `departamentoName` pero el filtro solo aplica los dos primeros
-- TDD: test CSV, test Excel, test sin datos (400)
+- **Implementado CSV, EXCEL (Apache POI) y PDF** (itextpdf 5, `PdfExporter` — gap 1.1 §9)
+- `ExportRequest` acepta `employeeCode`, `resultado`, `departamentoName`; **el filtro por departamento se aplica** (gap 1.3 §9)
+- TDD: test CSV, test Excel, test PDF, test formato inválido, test sin datos (400)
 
 **HU-17: Archivo Periódico para Socios**
-- `POST /api/reportes/archivo-periodico` — body: { "mes": 7, "anio": 2026, "formato": "CSV"|"EXCEL" }
-- **Gap vs plan**: el plan exige consulta agregada por departamento SIN datos personales (solo columnas: Departamento, Período, Total, Autorizados, Denegados, No Registrados, Suspendidos). La implementación actual emite **filas por empleado con datos personales** y no agrega por departamento; `departamentosIds` no existe en el request.
-- TDD: test CSV, test Excel, test sin datos (400)
+- `POST /api/reportes/archivo-periodico` — body: { "mes": 7, "anio": 2026, "formato": "CSV"|"EXCEL"|"PDF", "departmentNames": [...] }
+- **Implementada la agregación por departamento SIN datos personales** (columnas: Departamento, Período, Total, Autorizados, Denegados, No Registrados, Suspendidos) — gap 1.2 §9
+- TDD: test CSV, test Excel, test PDF, test sin datos (400), test filtro por departamentos
 
 **Dashboard del Supervisor** (adición de coherencia)
 - `GET /api/historial/stats` — indicadores agregados: accesos del día por resultado, permisos activos/suspendidos, empleados con acceso vigente
@@ -480,8 +482,8 @@ Comentar exclusivamente decisiones no obvias:
 - `MethodArgumentNotValidException` → HTTP 400 con lista de errores por campo
 - `ResponseStatusException` → HTTP 400/404/409/401 según el status lanzado desde servicios/controllers
 - `AccessDeniedException` → HTTP 403
-
-**Gap:** no hay handlers para `DataIntegrityViolationException` → 409 ni `Exception` → 500 genérico; los errores no mapeados caen en el handler de `Exception` por defecto de Spring.
+- `DataIntegrityViolationException` → HTTP 409 (gap 1.7 §9, implementado)
+- `Exception` genérica → HTTP 500 (gap 1.7 §9, implementado)
 
 ### Logging
 
@@ -507,6 +509,7 @@ Usar SLF4J + Logback. Registrar en cada operación crítica:
 | GET | /api/setup-password?token= | No | Autenticación | 05/08 |
 | POST | /api/setup-password | No | Autenticación | 05/08 |
 | GET | /api/admin/users | Admin | Administración | 05 |
+| GET | /api/admin/users/candidatos | Admin | Administración | 05 |
 | GET | /api/admin/users/{id} | Admin | Administración | 05 |
 | POST | /api/admin/users | Admin | Administración | 05 |
 | PUT | /api/admin/users/{id} | Admin | Administración | 06 |
@@ -522,14 +525,25 @@ Usar SLF4J + Logback. Registrar en cada operación crítica:
 | GET | /api/personal | Gestor/Admin | Gestión Personal | 14 |
 | GET | /api/personal/{id} | Gestor/Admin | Gestión Personal | 14 |
 | PATCH | /api/personal/{id} | Gestor/Admin | Gestión Personal | 14 |
+| GET | /api/personal/departamentos | Gestor/Admin | Gestión Personal | 09/14 |
+| GET | /api/personal/sedes | Gestor/Admin | Gestión Personal | 09/14 |
+| GET | /api/personal/{id}/permisos | Gestor/Admin | Gestión Personal | 11 |
+| GET | /api/personal/{id}/accesos | Gestor/Admin | Gestión Personal | 15 |
+| POST | /api/personal/{id}/photo | Gestor/Admin | Gestión Personal | 25 (3.1) |
+| GET | /api/personal/{id}/photo | Gestor/Admin | Gestión Personal | 25 (3.1) |
+| DELETE | /api/personal/{id}/photo | Gestor/Admin | Gestión Personal | 25 (3.1) |
 | GET | /api/personal/bulk/plantilla | Gestor/Admin | Gestión Personal | 10 |
 | POST | /api/personal/bulk | Gestor/Admin | Gestión Personal | 10 |
 | POST | /api/permisos | Gestor/Admin | Gestión Personal | 11 |
 | GET | /api/permisos | Gestor/Admin | Gestión Personal | 11 |
-| GET | /api/permisos/areas | Gestor/Admin | Gestión Personal | 11 |
+| GET | /api/permisos/areas | Gestor/Admin | Gestión Personal | 11/20 |
+| POST | /api/permisos/areas | Gestor/Admin | Gestión Personal | 20 (1.4) |
+| PUT | /api/permisos/areas/{id} | Gestor/Admin | Gestión Personal | 20 (1.4) |
+| DELETE | /api/permisos/areas/{id} | Gestor/Admin | Gestión Personal | 20 (1.4) |
 | PATCH | /api/permisos/{id} | Gestor/Admin | Gestión Personal | 11 |
 | DELETE | /api/permisos/{id} | Gestor/Admin | Gestión Personal | 12 |
 | PATCH | /api/permisos/{id}/suspend | Gestor/Admin | Gestión Personal | 13 |
+| PATCH | /api/permisos/{id}/reactivate | Gestor/Admin | Gestión Personal | 13 |
 | POST | /api/access/validate | Admin, Supervisor | Control Acceso | 18 |
 | GET | /api/historial | Supervisor/Admin | Reportes | 15 |
 | GET | /api/historial/stats | Supervisor/Admin | Reportes | — |
@@ -551,19 +565,28 @@ Fase 4: HU-11 → HU-12 → HU-13 (permisos de acceso)          ✓
 Fase 5: HU-18 (control acceso físico)                        ✓
 Fase 6: HU-05 → HU-06 → HU-07 → HU-08 (admin usuarios)      ✓
 Fase 7: HU-15 → HU-16 → HU-17 (reportes y auditoría)        ✓
-Fase 8: Frontend (rama `feat/frontend-ui`)                    en progreso
+Fase 8: Frontend React (rama `feat/frontend-gestor`)          en progreso
   ✓ HU-03 login + HU-05/08 magic link
   ✓ Dashboard del Admin (mockup 28): KPIs, candidatos a usuario, usuarios sin configuración, actividad reciente
   ✓ Gestión de usuarios (mockup 31) + Crear usuario (21/20)
-  ✓ Gestión de personal (mockup 32): lista + filtros
+  ✓ Gestión de personal (mockup 32): lista + filtros + paginación
+  ✓ Registro de personal (mockup 42) con foto opcional (HU-25)
+  ✓ Carga masiva (mockup 10) con plantilla, upload y tabla de errores inline
+  ✓ Detalle de empleado (mockup 41): edición, foto, asignar área, acciones de permiso e historial completo
+  ✓ Gestión de permisos (mockup 45): otorgar/editar/suspender/reactivar/revocar + KPIs derivables
   ✓ Dashboard del supervisor (mockup 09)
+  ✓ Validación de credencial (mockup 44) en `/supervisor/validar` — consume `POST /api/access/validate`
+  ✓ Reportes / historial (mockup 37) en `/supervisor/reportes` — filtros, export CSV/Excel y archivo periódico
+  ✓ Matriz de roles (mockup 16) en `/admin/matriz-roles` — solo lectura, reconstruida de `SecurityConfig`
+  ✓ Ajustes/Perfil (mockup 00) con cambio de contraseña (HU-03 adicional)
   ✓ Sitio corporativo público (mockup 27) en `/`
   ✓ Gestión de contenido público (mockup 18) en `/admin/contenido-publico`
+  ✓ Gestión de áreas de producción (mockup 22) en `/admin/areas` (backend CRUD 1.4 implementado)
 ```
 
-Adiciones de coherencia posteriores también implementadas: `GET /api/admin/stats`, `GET /api/historial/stats`, `GET /api/permisos` + `GET /api/permisos/areas` + `PATCH /api/permisos/{id}`, `POST /api/auth/change-password`, y flujo de magic link para contraseñas (HU-05/08).
+Adiciones de coherencia posteriores también implementadas: `GET /api/admin/stats`, `GET /api/historial/stats`, `GET /api/permisos` + `GET /api/permisos/areas` + `PATCH /api/permisos/{id}` + `PATCH /api/permisos/{id}/reactivate` + CRUD `POST/PUT/DELETE /api/permisos/areas`, `POST /api/auth/change-password`, fotografía de empleado (`POST/GET/DELETE /api/personal/{id}/photo`), `GET /api/personal/departamentos`, `GET /api/personal/sedes`, `GET /api/personal/{id}/permisos`, `GET /api/personal/{id}/accesos`, `GET /api/admin/users/candidatos` y flujo de magic link para contraseñas (HU-05/08).
 
-**Pendiente global:** frontend React en progreso (rama `feat/frontend-ui` con base, design system, rutas, autenticación, dashboard del Admin con panel de activación, gestión de personal, dashboard del supervisor, landing público y gestión de contenido público). Vistas aún no construidas: detalle de empleado (41), registro de personal (42), carga masiva (10), gestión de permisos (45), reportes (37), historial, validación de credencial (44), perfil admin (00), gestión de áreas (22, mockup sin backend), matriz de roles (16, mockup sin edición). Gaps documentados en §4/§7/§8 y en AGENTS.md.
+**Pendiente global (frontend):** no quedan vistas pendientes de los mockups finales; todas las rutas documentadas están construidas. Gaps restantes son de **backend** (PDF en export/archivo periódico, agregación por departamento, filtro por departamento, matriz de roles endpoint, invalidación JWT, handlers 409/500, tiempo real/rol SEGURIDAD, turnos) — documentados en §4/§7/§8/§9.12 y en AGENTS.md.
 
 Cada HU = al menos 1 commit atómico. Cada HU completa sus tests TDD antes de pasar a la siguiente.
 
@@ -594,14 +617,14 @@ Los mockups finales en `.stitch/screens/` (marca Laboratorio XYZ) asumen funcion
 
 | Mockup | Funcionalidad asumida | Estado en backend |
 |--------|----------------------|-------------------|
-| `22_...gesti-n-de-reas-de-producci-n` | CRUD de áreas de producción y terminales biométricos | Solo `GET /api/permisos/areas` (catálogo de lectura, seed en `DataInitializer`). Pendiente CRUD |
-| `16_...matriz-de-roles-y-permisos` | Matriz de roles/api/permisos editable | Roles fijos en `SecurityConfig` (ADMIN, GESTOR_PERSONAL, SUPERVISOR_AUDITOR). Pendiente edición |
-| `28_...dashboard-de-administraci-n` | Mapa de accesos en tiempo real, "Súper Usuario" | `/api/admin/stats` solo entrega contadores KPI. Pendiente decidir si se implementa el mapa |
-| `09_...panel-de-supervisi-n-corporativo` | Estado de zonas (A-12, B-04) y alertas críticas en vivo | `/api/historial/stats` solo entrega contadores KPI; las zonas A-12/B-04 no existen en el seed. Decorativo por ahora |
-| `42_...registro-de-personal` | Fotografía del empleado (opcional) | `RegisterEmployeeRequest` no tiene campo foto. Frontend-only pendiente |
+| `22_...gesti-n-de-reas-de-producci-n` | CRUD de áreas de producción y terminales biométricos | CRUD de áreas **implementado** (`POST/PUT/DELETE /api/permisos/areas`, §9 item 1.4) y frontend en `/admin/areas`. Terminales biométricos: no existen → pendiente de decidir |
+| `16_...matriz-de-roles-y-permisos` | Matriz de roles/api/permisos (consulta) | Roles fijos en `SecurityConfig` (ADMIN, GESTOR_PERSONAL, SUPERVISOR_AUDITOR). Vista frontend **implementada** en `/admin/matriz-roles` (solo lectura, reconstruida de `SecurityConfig`). **Pendiente** endpoint `GET /api/admin/role-matrix` (HU-27, opcional según §9 fase B) |
+| `28_...dashboard-de-administraci-n` | Mapa de accesos en tiempo real, "Súper Usuario" | Ocupación/zonas en vivo **implementadas** (§9.3 2.1–2.4) para ADMIN/SUPERVISOR (`/supervisor/zones`). El "Súper Usuario" y el mapa geográfico del mockup 28 siguen sin implementar |
+| `09_...panel-de-supervisi-n-corporativo` | Estado de zonas (A-12, B-04) y alertas críticas en vivo | Zonas y alertas en vivo **implementadas** (`/supervisor/zones`); las zonas del seed son Sala Blanca A/B, Laboratorio QC, Almacén Controlado, Zona de Empaque (no A-12/B-04). Decorativo en los nombres |
+| `42_...registro-de-personal` | Fotografía del empleado (opcional) | **Implementado** (HU-25, §9 item 3.1): `POST/GET/DELETE /api/personal/{id}/photo` + frontend en registro y detalle |
 | `46_...inicio-de-sesi-n-interno` | "¿Olvidó su contraseña?" | No hay flujo público de recovery; solo reset vía `POST /api/admin/users/{id}/reset-password` (magic link) |
-| `37_...reportes-de-auditor-a` | Exportar PDF | Pendiente implementar (pom incluye itextpdf 5; hoy solo CSV/EXCEL). Excepción aprobada: se implementa después |
-> **Cobertura:** la funcionalidad de los mockups 22 (CRUD áreas), 16 (matriz de roles), 28/09 (mapa y alertas en vivo), 42 (foto del empleado) y 37 (export PDF) está incorporada a la hoja de ruta de la §9. El flujo público de "¿Olvidó su contraseña?" (mockup 46) y la edición real de la matriz de permisos quedan fuera de alcance de §9.
+| `37_...reportes-de-auditor-a` | Exportar PDF | **Implementado** (gap 1.1 §9): PDF en `/api/historial/export` y archivo periódico (itextpdf 5, `PdfExporter`); frontend en `/supervisor/reportes` con botón PDF |
+> **Cobertura:** la funcionalidad de los mockups 22 (CRUD áreas — backend ✓, frontend `/admin/areas`), 42 (foto — implementada), 44 (validación — frontend `/supervisor/validar`), 37 (reportes — CSV/Excel/**PDF** + agregación por departamento implementados) y 16 (matriz — frontend `/admin/matriz-roles`, endpoint pendiente) está incorporada a la hoja de ruta de la §9. Lo que queda en la §9: 28/09 (mapa y alertas en vivo, §9.3), endpoint de matriz (§9.2 1.5), tiempo real (§9.3 2.x) y turnos (§9.4 3.2). El flujo público de "¿Olvidó su contraseña?" (mockup 46) y la edición real de la matriz de permisos quedan fuera de alcance de §9.
 
 ---
 
@@ -614,14 +637,14 @@ Plan complementario a este `PLAN_IMPLEMENTACION.md` y a `AGENTS.md`. Documenta l
 Tres líneas de trabajo acordadas:
 
 1. **Cerrar gaps existentes** (deuda técnica y mockups pendientes).
-2. **Acceso en tiempo real** + nuevo rol **SEGURIDAD** (consola del guardia).
+2. **Acceso en tiempo real** para ADMIN/SUPERVISOR (ocupación, emergencia de zona, SSE/mapa en vivo, alertas). **No se implementa el rol SEGURIDAD** (decisión de proyecto 2026-08-04).
 3. **Gestión de personal mejorada** (foto, turnos).
 
 Decisiones de diseño confirmadas:
 
 - **Matriz de roles**: solo consulta/vista (sin edición ni enforcement en BD).
 - **Tiempo real**: SSE (Server-Sent Events) con `SseEmitter` de Spring MVC y `EventSource` nativo en el frontend. Token JWT por query param en el endpoint de stream (EventSource no permite headers personalizados).
-- **Solicitudes/aprobación de acceso**: sustituidas por el rol SEGURIDAD y su consola operativa. No se implementa un workflow de aprobación de dos pasos.
+- **Sin rol SEGURIDAD ni consola de guardia**: los flujos de ocupación/emergencia/alertas quedan para ADMIN y SUPERVISOR_AUDITOR. Se eliminan también `SecurityActionLog` y la HU-24. No se implementa un workflow de aprobación de dos pasos.
 - **Implementación por fases** (A → D) de manera que cada fase deja el proyecto compilando y con tests verdes.
 
 ### 9.2 Línea 1 — Cerrar gaps existentes
@@ -633,6 +656,8 @@ Decisiones de diseño confirmadas:
 - **Tests**: export PDF con datos (bytes no vacíos, `Content-Type: application/pdf`), formato inválido 400, sin datos 400.
 - **Esfuerzo**: bajo (~1 día).
 
+> **Estado 1.1 — IMPLEMENTADO (backend + frontend)**: `PdfExporter` (itextpdf 5) compartido; formato PDF aceptado en `ExportRequest` y `PeriodicReportRequest`; botones CSV/Excel/PDF en `/supervisor/reportes`. Tests en `HistoryControllerTest`/`PeriodicReportControllerTest`.
+
 #### 1.2 Archivo periódico agregado por departamento (HU-17 gap)
 - Reemplazar la emisión de filas por empleado con una agregación `GROUP BY department` en `AccessHistoryRepository` (Total, Autorizados, Denegados, No Registrados, Suspendidos).
 - **Sin datos personales** (cumple el plan y la normativa para el socio internacional).
@@ -641,11 +666,15 @@ Decisiones de diseño confirmadas:
 - **Tests**: agregación correcta con varios empleados del mismo depto, filtro por deptos, sin datos 400.
 - **Esfuerzo**: bajo (~1 día).
 
+> **Estado 1.2 — IMPLEMENTADO**: `PeriodicReportServiceImpl` agrega `GROUP BY department` sin datos personales (Departamento, Período, Total, Autorizados, Denegados, No Registrados, Suspendidos) + fila TOTAL; `PeriodicReportRequest.departmentNames` opcional. Tests en `PeriodicReportControllerTest`.
+
 #### 1.3 Filtro por departamento en historial y export (HU-15/16)
 - `ExportRequest.departamentoName` ya se acepta pero no se aplica. Aplicar predicado `department` en `HistoryServiceImpl.search()` y `export()`.
 - `GET /api/historial`: añadir query param `department` (el campo `department` ya está denormalizado en `AccessHistory`).
 - **Tests**: historial filtrado por depto, export filtrado, sin resultados 400 en export.
 - **Esfuerzo**: bajo (horas).
+
+> **Estado 1.3 — IMPLEMENTADO**: `GET /api/historial?department=` y predicado de `ExportRequest.departamentoName` en `HistoryServiceImpl`. Tests en `HistoryControllerTest`.
 
 #### 1.4 CRUD de áreas de producción (mockup 22)
 - Pasar de catálogo de solo lectura (`GET /api/permisos/areas`) a CRUD completo en el mismo controller (mismas reglas de rol que `/api/permisos/**`).
@@ -656,11 +685,15 @@ Decisiones de diseño confirmadas:
 - **Tests**: crear, duplicado 409, editar, borrar, borrar con permisos asociados 409.
 - **Esfuerzo**: bajo-medio (1-2 días).
 
+> **Estado 1.4 — IMPLEMENTADO (backend)**: `POST/PUT/DELETE /api/permisos/areas` operativos en `PermissionController`; frontend de CRUD en `/admin/areas` (`AdminAreasView`, solo ADMIN). El histórico denormalizado `AccessHistory.productionAreaName` se conserva. Pendiente: revisar coherencia con §9.7 (flujo 19) y HU-20.
+
 #### 1.5 Matriz de roles — solo consulta (mockup 16)
 - `GET /api/admin/role-matrix` (solo ADMIN): devuelve la matriz `módulo × rol → booleano` que ya está implícita en `SecurityConfig`, incluyendo el nuevo rol SEGURIDAD.
 - **Sin edición ni enforcement en BD**: los roles siguen fijos en `SecurityConfig`. La matriz se reconstruye a partir de las reglas actuales para que la UI la muestre alineada con el backend.
 - **Tests**: devuelve la matriz con los 4 roles; 403 si el rol no es ADMIN.
 - **Esfuerzo**: bajo (~1 día).
+
+> **Estado 1.5 — IMPLEMENTADO**: `GET /api/admin/role-matrix` en `RoleMatrixController` (servicio que refleja SecurityConfig, sin rol SEGURIDAD). Vista `/admin/matriz-roles` consume el endpoint. Tests en `RoleMatrixControllerTest`. HU-27 creada.
 
 #### 1.6 Invalidar JWT al desactivar usuario (HU-07 gap)
 - `JwtAuthenticationFilter`: tras validar firma/expiración, cargar el usuario por ID y comprobar `status == ACTIVO`. Si no, devolver 401.
@@ -668,13 +701,17 @@ Decisiones de diseño confirmadas:
 - **Tests**: token de usuario recién desactivado → 401; usuario activo → 200.
 - **Esfuerzo**: bajo (~1 día).
 
+> **Estado 1.6 — IMPLEMENTADO**: `JwtAuthenticationFilter` consulta el `User` por ID y exige `status == ACTIVO`; si el usuario fue desactivado responde 401. Test: `JwtInvalidationTest`.
+
 #### 1.7 Handlers 409 y 500 en GlobalExceptionHandler
 - Añadir `DataIntegrityViolationException` → 409 (mensaje genérico de conflicto de unicidad).
 - Añadir `Exception` → 500 (con `log.error` y mensaje genérico, sin filtrar stacktrace al cliente).
 - **Tests**: violación de unicidad no mapeada 409; excepción no controlada 500.
 - **Esfuerzo**: bajo (horas).
 
-### 9.3 Línea 2 — Acceso en tiempo real + rol SEGURIDAD
+> **Estado 1.7 — IMPLEMENTADO**: `GlobalExceptionHandler` con `DataIntegrityViolationException` → 409 y `Exception` → 500 (log.error). Test: `GlobalExceptionHandlerTest`.
+
+### 9.3 Línea 2 — Acceso en tiempo real (solo ADMIN/SUPERVISOR, sin rol SEGURIDAD)
 
 #### 2.1 Sesiones de ocupación ("quién está dentro")
 - Nueva entidad `AccessSession` (id, `employee`, `productionArea`, `entryTime`, `exitTime` nullable).
@@ -688,7 +725,7 @@ Decisiones de diseño confirmadas:
 - Campo `emergencyClosed` (boolean, default false) en `ProductionArea`.
 - `POST /api/access/zones/{name}/emergency` (ADMIN/SUPERVISOR) con body `{cerrada: true|false}`.
 - En `validate()`: si el área está cerrada → `DENIED` con mensaje "ZONA CERRADA POR EMERGENCIA", se registra en `AccessHistory` y se emite evento SSE.
-- **Tests**: validar con zona en emergencia → denegado + historial, reabrir zona → flujo normal, guardia intenta → 403.
+- **Tests**: validar con zona en emergencia → denegado + historial, reabrir zona → flujo normal, sin rol → 403.
 - **Esfuerzo**: bajo-medio (1-2 días).
 
 #### 2.3 Mapa de zonas en vivo — SSE
@@ -699,9 +736,9 @@ Decisiones de diseño confirmadas:
   - `zone.updated` → `{area, emergencyClosed}`
   - `alert.created` → `{alert}`
   - `snapshot` (inicial) → `{zones[], occupancy[]}`
-- Endpoint `GET /api/access/stream` (ADMIN/SUPERVISOR/SEGURIDAD). Al conectar, envía el snapshot. Al validar/registrar salida/emergencia/alerta, se publica el evento.
+- Endpoint `GET /api/access/stream` (ADMIN/SUPERVISOR). Al conectar, envía el snapshot. Al validar/registrar salida/emergencia/alerta, se publica el evento.
 - **Autenticación SSE**: `EventSource` del navegador no permite header `Authorization`. Extender `JwtAuthenticationFilter.extractToken` para aceptar también token por query param **únicamente** en `/api/access/stream?token=...`. El resto del API sigue usando el header `Bearer`.
-- **Frontend**: hook `useZoneStream` (suscripción con reconexión automática) consumido por el panel de zonas y la consola del guardia.
+- **Frontend**: hook `useZoneStream` (suscripción con reconexión automática) consumido por el panel de zonas (mockups 09/28).
 - **Tests**: unitario del publisher (suscribir → publicar → recibir); integración con MockMvc async (conectar al stream → ejecutar `validate()` → recibir `access.validated` con `getAsyncResult()`).
 - **Esfuerzo**: medio (2-3 días).
 
@@ -716,15 +753,7 @@ Decisiones de diseño confirmadas:
 - **Tests**: disparo por 3 denegaciones, disparo nocturno, no-disparo en condiciones normales, listar alertas.
 - **Esfuerzo**: medio (2-3 días).
 
-#### 2.5 Rol SEGURIDAD y consola del guardia (sustituye 3.3 "solicitudes")
-- Nuevo valor `SEGURIDAD` en el enum `Role`.
-- `SecurityConfig`: el rol SEGURIDAD accede a `POST /api/access/validate`, `POST /api/access/exit`, `GET /api/access/occupancy`, `GET /api/access/zones` (snapshot de solo lectura), `GET /api/access/stream`. **NO** accede a emergency close, alerts, ni a `/api/admin/**`, `/api/personal/**`, `/api/reportes/**`.
-- Seed en `DataInitializer`: usuario `guardia@zonecontrol.com / Guard123!` vinculado a un Employee, para demo del rol.
-- **Pista de auditoría**: nueva entidad `SecurityActionLog` (id, `actorUserId`, `actorName`, `actorRole`, `action` enum: `VALIDAR_ACCESO`, `REGISTRAR_SALIDA`, `VER_OCUPACION`, `EMERGENCIA`; `employeeCode`; `productionAreaName`; `timestamp`; `detail`). Cada acción del guardia (y de supervisor/admin en emergencias) escribe una fila. `GET /api/access/logs` (ADMIN/SUPERVISOR) para auditarla.
-- **Logs del dominio**: los intentos de validación siguen registrándose en `AccessHistory` (resultado por intento, no se añade `SALIDA` al enum para no romper stats/reportes). Las salidas viven solo en `AccessSession` (ocupación) + `SecurityActionLog` (auditoría).
-- **Frontend**: ruta `/guardia` (requiere SEGURIDAD), vista de consola con selector de zona, lista de ocupación, input de validación de empleado, botón "Registrar salida" por empleado dentro de la zona, todo en vivo vía SSE. `RoleHome` del frontend mapea `SEGURIDAD → /guardia`.
-- **Tests**: validar como guardia 200, guardia no puede emergencia 403, salida registra sesión + log de auditoría, snapshot de zonas correcto, seed del usuario guardia.
-- **Esfuerzo**: medio (2-3 días).
+> **Estado Línea 2 — ELIMINADO el rol SEGURIDAD (decisión 2026-08-04)**: no se implementan `SecurityActionLog`, consola `/guardia` ni la HU-24. Los items 2.1–2.4 quedan PENDIENTES para ADMIN/SUPERVISOR.
 
 ### 9.4 Línea 3 — Gestión de personal mejorada
 
@@ -736,6 +765,8 @@ Decisiones de diseño confirmadas:
 - **Tests**: subida válida, extensión inválida 400, tamaño excedido 400, empleado inexistente 404, GET devuelve el archivo.
 - **Esfuerzo**: bajo-medio (1-2 días).
 
+> **Estado 3.1 — IMPLEMENTADO (backend + frontend)**: `POST/GET/DELETE /api/personal/{id}/photo` en `EmployeeController`; frontend en `RegisterEmployeeView` (foto opcional) y `EmployeeDetailView` (ver/cambiar/eliminar). `Employee.photoUrl` sembrado en `EmployeeSearchResponse`.
+
 #### 3.2 Turnos y horarios por día (mockup 45)
 - Nueva entidad `PermissionSchedule` (id, `permission` FK, `dayOfWeek` enum LUN..DOM, `startTime`, `endTime`).
 - Migración: los permisos existentes generan un schedule LUN-DOM con su `startTime`/`endTime` actual (script de datos idempotente en `DataInitializer` o al arranque).
@@ -744,6 +775,8 @@ Decisiones de diseño confirmadas:
 - **Tests**: validación con turno del día correcto, día sin turno → SUSPENDIDO, hora fuera de ventana → SUSPENDIDO, migración correcta de permisos existentes, criterios ya existentes de HU-18/11 siguen verdes.
 - **Esfuerzo**: medio-alto (2-3 días, toca la query de validación núcleo).
 
+> **Estado 3.2 — IMPLEMENTADO**: `PermissionSchedule` (LUN..DOM) + migración idempotente en `DataInitializer`, query `hasValidPermission` exige schedule del día + ventana (con fallback para permisos sin schedules), `Create/UpdatePermissionRequest.schedules` opcionales y selector de días en `PermissionFormModal`. Tests en `PermissionScheduleControllerTest`. HU-26 creada.
+
 ### 9.5 Nuevas Historias de Usuario
 
 Las HUs nuevas siguen la numeración de `docs/historias_usuario/HU-*.md` y se crean/actualizan **durante la implementación de cada fase**, no ahora.
@@ -751,63 +784,63 @@ Las HUs nuevas siguen la numeración de `docs/historias_usuario/HU-*.md` y se cr
 | HU | Nombre | Actor principal |
 |---|---|---|
 | HU-20 | Gestionar Áreas de Producción | Gestor/Admin |
-| HU-21 | Consultar Ocupación en Tiempo Real | Guardia / Supervisor / Admin |
+| HU-21 | Consultar Ocupación en Tiempo Real | Supervisor / Admin |
 | HU-22 | Cerrar Zona por Emergencia | Supervisor / Admin |
 | HU-23 | Alertas de Anomalías de Acceso | Sistema → Supervisor / Admin |
-| HU-24 | Consola de Seguridad (Rol SEGURIDAD) | Guardia |
 | HU-25 | Fotografía del Empleado | Gestor |
 | HU-26 | Turnos y Horarios por Día | Gestor |
 | HU-27 | Consultar Matriz de Roles y Permisos | Admin |
+
+> HU-24 (Consola de Seguridad / rol SEGURIDAD) **ELIMINADA** por decisión de proyecto (2026-08-04).
 
 Formato de cada HU (alineado con las existentes): tabla de metadatos, descripción, requerimiento, **criterios de aceptación (uno por test)**, tareas y control de versiones.
 
 ### 9.6 HUs a actualizar (no son nuevas)
 
-- **HU-07**: nuevo criterio — al desactivar un usuario, sus tokens JWT dejan de ser válidos inmediatamente (401).
-- **HU-15**: nuevo criterio — filtro por `department` en `GET /api/historial`.
-- **HU-16**: nuevo criterio — formato `PDF` en el export (junto a CSV/EXCEL).
-- **HU-17**: reescritura — archivo periódico agregado por departamento sin datos personales, con `departmentNames` opcional.
-- **HU-18**: actor ampliado a SEGURIDAD; nuevo criterio — zona en emergencia → INGRESO DENEGADO; nota sobre eventos SSE y logs de auditoría.
-- **HU-00**: actualizar HU Relacionada (HU-20..27), añadir actor Guardia de Seguridad, actualizar tareas.
+- **HU-07**: nuevo criterio — al desactivar un usuario, sus tokens JWT dejan de ser válidos inmediatamente (401). ✅ Actualizada (gap 1.6 implementado).
+- **HU-15**: nuevo criterio — filtro por `department` en `GET /api/historial`. ✅ Actualizada (gap 1.3 implementado).
+- **HU-16**: nuevo criterio — formato `PDF` en el export (junto a CSV/EXCEL). ✅ Actualizada (gap 1.1 implementado).
+- **HU-17**: reescritura — archivo periódico agregado por departamento sin datos personales, con `departmentNames` opcional. ✅ Actualizada (gap 1.2 implementado).
+- **HU-18**: nuevo criterio — zona en emergencia → INGRESO DENEGADO (depende de §9.3 2.2, pendiente). Sin actor SEGURIDAD.
+- **HU-00**: actualizar HU Relacionada (HU-20..27, sin HU-24), actualizar tareas. Sin actor Guardia.
 
 ### 9.7 Diagramas
 
 #### Casos de uso (`docs/diagramas/casos_uso/`)
-- `00_diagrama_general.puml`: nuevo actor **Guardia de Seguridad** (`--|> Auth`) + CU nuevos por módulo.
+- `00_diagrama_general.puml`: CU nuevos por módulo (sin actor Guardia).
 - `03_modulo_administracion.puml`: CU-03c → "Consultar matriz de roles y permisos" (solo lectura).
 - `04_modulo_gestion_personal.puml`: CU-06a Gestionar áreas de producción · CU-06b Turnos y horarios · CU-07b Fotografía del empleado.
-- `05_modulo_control_acceso_fisico.puml`: actor Guardia + CU-11d Consultar ocupación · CU-11e Registrar salida · CU-11f Cerrar zona por emergencia · CU-11g Alertas de anomalías (relaciones `<<include>>`/`<<extend>>` coherentes).
-- `06_modulo_reportes_auditoria.puml`: CU-08 + filtro depto · CU-09 + PDF · CU-10 agregación por departamento · **CU-12** Consultar logs de auditoría de seguridad.
+- `05_modulo_control_acceso_fisico.puml`: CU-11d Consultar ocupación · CU-11e Registrar salida · CU-11f Cerrar zona por emergencia · CU-11g Alertas de anomalías (actores Supervisor/Admin; sin Guardia).
+- `06_modulo_reportes_auditoria.puml`: CU-08 + filtro depto · CU-09 + PDF · CU-10 agregación por departamento.
 
 #### Flujos (`docs/diagramas/flujo/`)
-- Nuevos: `19_flujo_gestion_areas_produccion.puml`, `20_flujo_consulta_ocupacion.puml`, `21_flujo_cierre_emergencia.puml`, `22_flujo_alertas_anomalias.puml`, `23_flujo_consola_guardia.puml`.
-- Actualizados: `13_flujo_historial.puml` (filtro depto), `14_flujo_documento_descargable.puml` (opción PDF), `15_flujo_archivo_periodico.puml` (agregación por departamento), `16_flujo_control_acceso.puml` (emergencia + actor Guardia + ocupación).
+- Nuevos: `19_flujo_gestion_areas_produccion.puml` (✓ creado), `20_flujo_consulta_ocupacion.puml`, `21_flujo_cierre_emergencia.puml`, `22_flujo_alertas_anomalias.puml`. **No** se crea el flujo de consola de guardia (rol eliminado).
+- Actualizados: `13_flujo_historial.puml` (filtro depto ✓), `14_flujo_documento_descargable.puml` (opción PDF ✓), `15_flujo_archivo_periodico.puml` (agregación por departamento ✓), `16_flujo_control_acceso.puml` (emergencia + ocupación; sin Guardia).
 
 #### Documentos maestros
-- `docs/diagramas/README.md`: actualizar tablas de CU y flujos, añadir actor Guardia, asignar la vista `/guardia` al dashboard del Guardia, reasignar vistas de áreas/matriz/zonas a sus respectivos dashboards.
+- `docs/diagramas/README.md`: actualizar tablas de CU y flujos; asignar vistas de áreas/matriz/zonas a sus respectivos dashboards. Sin actor Guardia ni vista `/guardia`.
 - `docs/PLAN_IMPLEMENTACION.md`: esta §9 + actualizar §5 (resumen de endpoints) cuando se ejecute cada fase.
 
 ### 9.8 Frontend (por fase, con el design system existente)
 
 | Vista | Funcionalidad | Mockup de referencia |
 |---|---|---|
-| Reportes | Selector formato CSV/Excel/**PDF**; archivo periódico con agregación por departamento y filtro | 37 |
-| Áreas de producción | CRUD de áreas (tabla + modal) | 22 |
-| Matriz de roles | Tabla de solo lectura módulo × rol | 16 |
+| Reportes | Selector formato CSV/Excel/**PDF**; archivo periódico con agregación por departamento y filtro | 37 (✓ implementado) |
+| Áreas de producción | CRUD de áreas (tabla + modal) | 22 (✓ implementado, admin) |
+| Matriz de roles | Tabla de solo lectura módulo × rol | 16 (✓ implementado; endpoint pendiente) |
 | Panel de zonas | Estado por área, aforo en vivo, toggle de emergencia, alertas en vivo vía SSE | 28, 09 |
-| Consola guardia (`/guardia`) | Validación de empleado, ocupación, botón "Registrar salida" | 44 (adaptado) |
-| Gestión personal | Subida de foto, schedules de turnos en el formulario de permiso | 42, 45 |
+| Gestión personal | Subida de foto (✓), schedules de turnos en el formulario de permiso | 42, 45 |
 
-Rutas nuevas (protegidas por rol en `src/main/frontend/src/routes/index.tsx`): `/admin/areas`, `/admin/matriz-roles`, `/supervisor/zones`, `/guardia`, `/reportes`. `RoleHome` (`routes/index.tsx:37-42`) se amplía para mapear `SEGURIDAD → /guardia`.
+Rutas nuevas (protegidas por rol en `src/main/frontend/src/routes/index.tsx`): `/admin/areas` (✓), `/admin/matriz-roles` (✓), `/supervisor/zones`, `/supervisor/reportes` (✓), `/supervisor/validar` (✓). No se implementa `/guardia` (rol SEGURIDAD eliminado).
 
 ### 9.9 Fases de implementación
 
 | Fase | Items | Salida esperada |
 |---|---|---|
-| **A — Gaps fáciles** | 1.7 → 1.3 → 1.6 → 1.1 → 1.2 | Backend estable, tests verdes, HUs (07, 15, 16, 17) actualizadas, flujos 13-15 actualizados. |
-| **B — Áreas y matriz** | 1.4 (HU-20) → 1.5 (HU-27) | CRUD áreas funcionando, matriz visible; nuevos CU-06a/CU-03c y flujo 19. |
-| **C — Tiempo real** | 2.1 (HU-21) → 2.2 (HU-22) → 2.3 (SSE) → 2.4 (HU-23) → 2.5 (HU-24) | Sesiones, emergencia, SSE, alertas y consola del guardia; nuevos flujos 20-23, rol SEGURIDAD sembrado, `SecurityActionLog`. |
-| **D — Personal** | 3.1 (HU-25) → 3.2 (HU-26) | Foto y schedules; CU-07b y CU-06b. |
+| **A — Gaps fáciles** | 1.7 → 1.3 → 1.6 → 1.1 → 1.2 | ✅ COMPLETADA: handlers 409/500, filtro por depto, invalidación JWT, export PDF y agregación por departamento. HUs 07/15/16/17 y flujos 13-15 actualizados. |
+| **B — Áreas y matriz** | 1.4 (HU-20) → 1.5 (HU-27) | ✅ COMPLETADA: CRUD áreas (backend + frontend admin) y endpoint `GET /api/admin/role-matrix` + HU-20/HU-27. |
+| **C — Tiempo real** | 2.1 (HU-21) → 2.2 (HU-22) → 2.3 (SSE) → 2.4 (HU-23) | ✅ COMPLETADA: sesiones, emergencia, SSE y alertas para ADMIN/SUPERVISOR; flujos 20-22 y HUs 21-23. Sin rol SEGURIDAD ni `SecurityActionLog`. |
+| **D — Personal** | 3.1 (HU-25 ✓) → 3.2 (HU-26) | ✅ COMPLETADA: foto ✓ (CU-07b) y turnos/schedules ✓ (CU-06b, HU-26). |
 
 Frontend integrado por fase, consumiendo los hooks y store ya existentes. Documentos maestros (`docs/diagramas/README.md`, HU-00, esta §9) actualizados al cierre de cada fase.
 
@@ -826,3 +859,19 @@ Frontend integrado por fase, consumiendo los hooks y store ya existentes. Docume
 - Las nuevas entidades (`AccessSession`, `AccessAlert`, `SecurityActionLog`, `PermissionSchedule`) se ubican en los módulos existentes (`modulo_control_acceso`, `modulo_gestion_personal`); no se crean paquetes nuevos salvo que la cohesión lo justifique.
 - Cada fase deja el backend compilando, con todos los tests verdes y la documentación sincronizada.
 - El plan se ejecuta **después** del cierre de la Fase 7 actual (reportes y auditoría) y se coordina con el avance del frontend React en `src/main/frontend/`.
+
+### 9.12 Estado de implementación de la §9 (fecha: 2026-08-04)
+
+| Item | Descripción | Estado |
+|---|---|---|
+| 1.1 | Export PDF (HU-16/17) | IMPLEMENTADO (backend + frontend) |
+| 1.2 | Archivo periódico agregado por departamento | IMPLEMENTADO |
+| 1.3 | Filtro por departamento en historial y export | IMPLEMENTADO |
+| 1.4 | CRUD de áreas de producción (HU-20) | IMPLEMENTADO (backend) + frontend `/admin/areas` (admin) |
+| 1.5 | Matriz de roles solo consulta (HU-27) | IMPLEMENTADO: `GET /api/admin/role-matrix` + vista `/admin/matriz-roles` consumiendo el endpoint |
+| 1.6 | Invalidar JWT al desactivar usuario (HU-07 gap) | IMPLEMENTADO |
+| 1.7 | Handlers 409 y 500 en GlobalExceptionHandler | IMPLEMENTADO |
+| 2.1–2.4 | Tiempo real para ADMIN/SUPERVISOR (ocupación, emergencia, SSE, alertas) | IMPLEMENTADO (backend + frontend `/supervisor/zones`); sin rol SEGURIDAD |
+| 2.5 | Rol SEGURIDAD / consola del guardia / SecurityActionLog | ELIMINADO (decisión de proyecto) |
+| 3.1 | Fotografía del empleado (HU-25) | IMPLEMENTADO (backend + frontend) |
+| 3.2 | Turnos y horarios por día (HU-26) | IMPLEMENTADO (entidad PermissionSchedule + validación por día + frontend) |
