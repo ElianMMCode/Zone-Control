@@ -150,7 +150,6 @@ class PeriodicReportControllerTest {
 
         int mes = LocalDateTime.now().getMonthValue();
         int anio = LocalDateTime.now().getYear();
-        String periodo = String.format("%d-%02d", anio, mes);
 
         mockMvc.perform(post("/api/reportes/archivo-periodico")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -158,8 +157,9 @@ class PeriodicReportControllerTest {
                                 "mes", mes, "anio", anio, "formato", "CSV"
                         ))))
                 .andExpect(status().isOk())
-                // Agregación por departamento, sin datos personales
-                .andExpect(content().string(containsString("Esterilización;" + periodo + ";2;1;1;0;0")))
+                // Agregación por departamento × área, sin datos personales
+                .andExpect(content().string(containsString("Esterilización;Sala Blanca A;1;1;0;0;0;100")))
+                .andExpect(content().string(containsString("Esterilización;Sala Blanca B;1;0;1;0;0;0")))
                 .andExpect(content().string(not(containsString("EMP-PER-01"))))
                 .andExpect(content().string(not(containsString("Periodico Test"))));
     }
@@ -193,5 +193,96 @@ class PeriodicReportControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Control de Calidad;")))
                 .andExpect(content().string(not(containsString("Producción Sólidos;"))));
+    }
+
+    @Test
+    void preview_returnsAggregatedRows() throws Exception {
+        int mes = LocalDateTime.now().getMonthValue();
+        int anio = LocalDateTime.now().getYear();
+
+        mockMvc.perform(post("/api/reportes/archivo-periodico/preview")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "mes", mes, "anio", anio, "formato", "CSV"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mes").value(mes))
+                .andExpect(jsonPath("$.anio").value(anio))
+                .andExpect(jsonPath("$.areaRows").isArray())
+                .andExpect(jsonPath("$.areaRows[0].department").isString())
+                .andExpect(jsonPath("$.areaRows[0].area").isString())
+                .andExpect(jsonPath("$.areaRows[0].total").isNumber())
+                .andExpect(jsonPath("$.areaRows[0].autorizados").isNumber())
+                .andExpect(jsonPath("$.areaRows[0].denegados").isNumber())
+                .andExpect(jsonPath("$.areaRows[0].noRegistrados").isNumber())
+                .andExpect(jsonPath("$.areaRows[0].suspendidos").isNumber())
+                .andExpect(jsonPath("$.areaRows[0].pctAutorizados").isNumber())
+                .andExpect(jsonPath("$.dayRows").isArray())
+                .andExpect(jsonPath("$.dayRows[0].dia").isString())
+                .andExpect(jsonPath("$.dayRows[0].total").isNumber())
+                .andExpect(jsonPath("$.generatedAt").isString());
+    }
+
+    @Test
+    void periodicReport_excludesExitRows() throws Exception {
+        // "Esterilización" no tiene historial sembrado → conteos deterministas.
+        Department esterilizacion = departmentRepository.findByName("Esterilización").orElseThrow();
+        Employee emp = employeeRepository.save(Employee.builder()
+                .employeeCode("EMP-PER-04")
+                .documentType(DocumentType.CC)
+                .documentNumber("8888888891")
+                .firstName("Salida")
+                .lastName("Periodico")
+                .position("Operario")
+                .department(esterilizacion)
+                .status(EmployeeStatus.ACTIVO)
+                .build());
+        accessHistoryRepository.save(AccessHistory.builder()
+                .employee(emp).department(esterilizacion.getName()).productionAreaName("Sala Blanca A")
+                .timestamp(LocalDateTime.now()).result(AccessResult.AUTHORIZED).build());
+        // La salida no suma a la agregación del archivo periódico.
+        accessHistoryRepository.save(AccessHistory.builder()
+                .employee(emp).department(esterilizacion.getName()).productionAreaName("Sala Blanca A")
+                .timestamp(LocalDateTime.now()).result(AccessResult.EXIT).build());
+
+        int mes = LocalDateTime.now().getMonthValue();
+        int anio = LocalDateTime.now().getYear();
+
+        mockMvc.perform(post("/api/reportes/archivo-periodico")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "mes", mes, "anio", anio, "formato", "CSV",
+                                "departmentNames", java.util.List.of(esterilizacion.getName())
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString(
+                        esterilizacion.getName() + ";Sala Blanca A;1;1;0;0;0;100")));
+    }
+
+    @Test
+    void preview_filtersByDepartmentNames() throws Exception {
+        int mes = LocalDateTime.now().getMonthValue();
+        int anio = LocalDateTime.now().getYear();
+
+        mockMvc.perform(post("/api/reportes/archivo-periodico/preview")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "mes", mes, "anio", anio, "formato", "EXCEL",
+                                "departmentNames", java.util.List.of("Control de Calidad")
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.areaRows[?(@.department=='Control de Calidad')]").exists());
+    }
+
+    @Test
+    void preview_noData_returns400() throws Exception {
+        mockMvc.perform(post("/api/reportes/archivo-periodico/preview")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "mes", 1, "anio", 2020, "formato", "CSV"
+                        ))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(
+                        "No se encontraron registros de acceso para el período seleccionado"));
     }
 }

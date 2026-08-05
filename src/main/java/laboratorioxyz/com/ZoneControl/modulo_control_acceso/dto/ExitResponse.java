@@ -5,15 +5,18 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 @AllArgsConstructor
 @Builder
-public class ValidateAccessResponse {
+public class ExitResponse {
     private AccessResult result;
     private String message;
-    /** Datos del empleado que intentó el ingreso (null si no se pudo resolver). */
     private String employeeCode;
     private String employeeName;
     private String position;
     private String department;
+    private String productionAreaName;
+    private LocalDateTime timestamp;
 }

@@ -2,14 +2,17 @@ package laboratorioxyz.com.ZoneControl.modulo_control_acceso.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import laboratorioxyz.com.ZoneControl.model.entity.Department;
+import laboratorioxyz.com.ZoneControl.model.enums.AccessResult;
 import laboratorioxyz.com.ZoneControl.model.enums.DocumentType;
 import laboratorioxyz.com.ZoneControl.model.enums.EmployeeStatus;
 import laboratorioxyz.com.ZoneControl.model.enums.PermissionStatus;
 import laboratorioxyz.com.ZoneControl.model.repository.DepartmentRepository;
 import laboratorioxyz.com.ZoneControl.model.repository.ProductionAreaRepository;
 import laboratorioxyz.com.ZoneControl.modulo_control_acceso.model.AccessAlert;
+import laboratorioxyz.com.ZoneControl.modulo_control_acceso.model.AccessHistory;
 import laboratorioxyz.com.ZoneControl.modulo_control_acceso.model.AccessSession;
 import laboratorioxyz.com.ZoneControl.modulo_control_acceso.repository.AccessAlertRepository;
+import laboratorioxyz.com.ZoneControl.modulo_control_acceso.repository.AccessHistoryRepository;
 import laboratorioxyz.com.ZoneControl.modulo_control_acceso.repository.AccessSessionRepository;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.model.AccessPermission;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.model.Employee;
@@ -21,15 +24,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -53,7 +59,9 @@ class AccessMonitoringControllerTest {
     @Autowired private AccessPermissionRepository accessPermissionRepository;
     @Autowired private AccessSessionRepository accessSessionRepository;
     @Autowired private AccessAlertRepository accessAlertRepository;
+    @Autowired private AccessHistoryRepository accessHistoryRepository;
     @Autowired private ProductionAreaRepository productionAreaRepository;
+    @Autowired private JdbcTemplate jdbcTemplate;
 
     private Department dept;
     private final String areaName = "Sala Blanca A";
@@ -95,7 +103,9 @@ class AccessMonitoringControllerTest {
         grantPermission(emp);
         validate("EMP-MON-01");
 
-        List<AccessSession> active = accessSessionRepository.findByExitTimeIsNull();
+        List<AccessSession> active = accessSessionRepository.findByExitTimeIsNull().stream()
+                .filter(s -> s.getEmployee().getEmployeeCode().equals("EMP-MON-01"))
+                .toList();
         assertEquals(1, active.size());
         assertEquals("EMP-MON-01", active.get(0).getEmployee().getEmployeeCode());
 
@@ -105,7 +115,10 @@ class AccessMonitoringControllerTest {
                                 "employeeCode", "EMP-MON-01", "productionAreaName", areaName))))
                 .andExpect(status().isOk());
 
-        assertTrue(accessSessionRepository.findByExitTimeIsNull().isEmpty());
+        List<AccessSession> stillActive = accessSessionRepository.findByExitTimeIsNull().stream()
+                .filter(s -> s.getEmployee().getEmployeeCode().equals("EMP-MON-01"))
+                .toList();
+        assertTrue(stillActive.isEmpty());
     }
 
     @Test
@@ -119,6 +132,49 @@ class AccessMonitoringControllerTest {
     }
 
     @Test
+    void exit_registersExitHistory() throws Exception {
+        Employee emp = createEmployee("EMP-MON-06", "120000006", EmployeeStatus.ACTIVO);
+        grantPermission(emp);
+        validate("EMP-MON-06");
+
+        mockMvc.perform(post("/api/access/exit")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "employeeCode", "EMP-MON-06", "productionAreaName", areaName))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result").value("EXIT"))
+                .andExpect(jsonPath("$.message").value("Salida registrada"))
+                .andExpect(jsonPath("$.employeeCode").value("EMP-MON-06"))
+                .andExpect(jsonPath("$.department").value(dept.getName()))
+                .andExpect(jsonPath("$.productionAreaName").value(areaName));
+
+        List<AccessHistory> exits = accessHistoryRepository.findAll().stream()
+                .filter(h -> h.getResult() == AccessResult.EXIT)
+                .filter(h -> h.getEmployee() != null && emp.getId().equals(h.getEmployee().getId()))
+                .toList();
+        assertFalse(exits.isEmpty(), "La salida debe quedar registrada en access_history");
+        AccessHistory exit = exits.get(exits.size() - 1);
+        assertEquals(dept.getName(), exit.getDepartment());
+        assertEquals(areaName, exit.getProductionAreaName());
+        assertEquals("EMP-MON-06", exit.getEmployee().getEmployeeCode());
+    }
+
+    @Test
+    void deleteNocturnalAlerts_removesLegacyRows() {
+        jdbcTemplate.update("INSERT INTO access_alerts (id, tipo, severidad, message, timestamp, leido) "
+                        + "VALUES (?, 'ACCESO_NOCTURNO', 'LOW', 'legacy', ?, false)",
+                UUID.randomUUID(), LocalDateTime.now());
+
+        long before = accessAlertRepository.count();
+        accessAlertRepository.deleteNocturnalAlerts();
+
+        assertEquals(before - 1, accessAlertRepository.count());
+        Long remaining = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM access_alerts WHERE tipo = 'ACCESO_NOCTURNO'", Long.class);
+        assertEquals(0L, remaining);
+    }
+
+    @Test
     void doubleEntry_closesPreviousSession() throws Exception {
         Employee emp = createEmployee("EMP-MON-02", "120000002", EmployeeStatus.ACTIVO);
         grantPermission(emp);
@@ -126,6 +182,7 @@ class AccessMonitoringControllerTest {
         validate("EMP-MON-02");
 
         List<AccessSession> all = accessSessionRepository.findAll().stream()
+                .filter(s -> s.getEmployee().getEmployeeCode().equals("EMP-MON-02"))
                 .sorted((a, b) -> a.getEntryTime().compareTo(b.getEntryTime()))
                 .toList();
         assertEquals(2, all.size());
@@ -139,11 +196,12 @@ class AccessMonitoringControllerTest {
         grantPermission(emp);
         validate("EMP-MON-03");
 
+        // El seed puede cargar aforos en las salas; validamos que el empleado
+        // del test aparezca dentro de la ocupación de su área.
         mockMvc.perform(get("/api/access/occupancy"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.areas[0].area").value(areaName))
-                .andExpect(jsonPath("$.areas[0].aforo").value(1))
-                .andExpect(jsonPath("$.areas[0].people[0].employeeCode").value("EMP-MON-03"));
+                .andExpect(jsonPath("$.areas[?(@.area=='" + areaName + "')].people[?(@.employeeCode=='EMP-MON-03')]")
+                        .exists());
     }
 
     @Test

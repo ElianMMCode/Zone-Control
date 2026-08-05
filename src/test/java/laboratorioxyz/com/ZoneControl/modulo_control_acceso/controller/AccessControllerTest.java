@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -104,7 +105,19 @@ class AccessControllerTest {
                         .content(requestBody("EMP-TEST-01", areaName)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result").value("AUTHORIZED"))
-                .andExpect(jsonPath("$.message").value("INGRESO AUTORIZADO"));
+                .andExpect(jsonPath("$.message").value("INGRESO AUTORIZADO"))
+                .andExpect(jsonPath("$.employeeCode").value("EMP-TEST-01"))
+                .andExpect(jsonPath("$.employeeName").value("Test User"))
+                .andExpect(jsonPath("$.position").value("Técnico"))
+                .andExpect(jsonPath("$.department").value("Control de Calidad"));
+    }
+
+    @Test
+    void supervisor_canListProductionAreas() throws Exception {
+        mockMvc.perform(get("/api/permisos/areas"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)))
+                .andExpect(jsonPath("$[0].name").isString());
     }
 
     @Test

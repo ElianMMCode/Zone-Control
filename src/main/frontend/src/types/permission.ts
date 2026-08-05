@@ -1,4 +1,4 @@
-import type { PermissionStatus, WeekDay } from "./common";
+import type { EmployeeStatus, PermissionStatus, WeekDay } from "./common";
 
 export interface ProductionArea {
   id: string;
@@ -20,11 +20,11 @@ export interface PermissionResponse {
   status: PermissionStatus;
   startDate: string;
   expirationDate: string;
-  reactivationDate: string | null;
-  startTime: string;
-  endTime: string;
-  schedules: { dayOfWeek: WeekDay; startTime: string; endTime: string }[];
-}
+   reactivationDate: string | null;
+   startTime: string;
+   endTime: string;
+   schedules: AreaSchedule[];
+ }
 
 export interface CreatePermissionRequest {
   employeeCode: string;
@@ -42,4 +42,33 @@ export interface UpdatePermissionRequest {
   startTime?: string;
   endTime?: string;
   schedules?: PermissionScheduleRequest[];
+}
+
+export interface AreaEmployee {
+  employeeCode: string;
+  employeeName: string;
+  position: string | null;
+  department: string | null;
+  employeeStatus: EmployeeStatus;
+}
+
+export interface AreaSchedule {
+  dayOfWeek: WeekDay;
+  startTime: string;
+  endTime: string;
+}
+
+export interface AreaAuthorization {
+  id: string;
+  employeeCode: string;
+  employeeName: string;
+  position: string | null;
+  department: string | null;
+  permissionStatus: PermissionStatus;
+  startDate: string;
+  expirationDate: string;
+  reactivationDate: string | null;
+  startTime: string;
+  endTime: string;
+  schedules: AreaSchedule[];
 }

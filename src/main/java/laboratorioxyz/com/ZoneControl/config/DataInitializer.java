@@ -19,8 +19,10 @@ import laboratorioxyz.com.ZoneControl.modulo_autenticacion.model.User;
 import laboratorioxyz.com.ZoneControl.modulo_autenticacion.repository.UserRepository;
 import laboratorioxyz.com.ZoneControl.modulo_control_acceso.model.AccessAlert;
 import laboratorioxyz.com.ZoneControl.modulo_control_acceso.model.AccessHistory;
+import laboratorioxyz.com.ZoneControl.modulo_control_acceso.model.AccessSession;
 import laboratorioxyz.com.ZoneControl.modulo_control_acceso.repository.AccessAlertRepository;
 import laboratorioxyz.com.ZoneControl.modulo_control_acceso.repository.AccessHistoryRepository;
+import laboratorioxyz.com.ZoneControl.modulo_control_acceso.repository.AccessSessionRepository;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.model.AccessPermission;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.model.Employee;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.model.PermissionSchedule;
@@ -72,6 +74,7 @@ public class DataInitializer implements CommandLineRunner {
     private final ProductCatalogRepository productCatalogRepository;
     private final AccessPermissionRepository accessPermissionRepository;
     private final AccessHistoryRepository accessHistoryRepository;
+    private final AccessSessionRepository accessSessionRepository;
     private final AccessAlertRepository accessAlertRepository;
     private final PermissionScheduleRepository permissionScheduleRepository;
     private final BCryptPasswordEncoder passwordEncoder;
@@ -93,6 +96,8 @@ public class DataInitializer implements CommandLineRunner {
         seedAccessPermissions();
         seedCandidateEmployees();
         seedGestorSampleData();
+        seedAreaAuthorizations();
+        seedAccessSessions();
         seedAccessHistory();
         seedAccessAlerts();
         migratePermissionSchedules();
@@ -506,6 +511,13 @@ public class DataInitializer implements CommandLineRunner {
      * vigencia, foto). Es idempotente.
      */
     private void seedGestorSampleData() {
+        // Empleado del departamento Esterilización: idempotente, garantiza que
+        // el departamento tenga datos reales en los filtros y vistas.
+        Department esterilizacion = departmentRepository.findByName("Esterilización").orElseThrow();
+        saveEmployee("EMP-000106", "200000106", "Estefanía", "Londoño",
+                "Operadora de Esterilización", "estefania.londono@laboratorioxzy.com.co",
+                esterilizacion, EmployeeStatus.ACTIVO, null);
+
         if (employeeRepository.findByEmployeeCode("EMP-000100").isPresent()) {
             log.info("Gestor sample employees already exist — skipping");
             return;
@@ -554,6 +566,84 @@ public class DataInitializer implements CommandLineRunner {
                 LocalDate.now().minusYears(2), null);
 
         log.info("Seeded 6 rich sample employees for gestor dashboard (various statuses)");
+    }
+
+    /**
+     * Autorizaciones por área (vista por sala del panel de zonas): garantiza
+     * que las 5 áreas de producción tengan empleados asignados y permisos con
+     * turnos por día para mostrar. Idempotente por empleado (un empleado que ya
+     * tiene permiso se omite, incluidos los sembrados en seedAccessPermissions).
+     */
+    private void seedAreaAuthorizations() {
+        LocalDate today = LocalDate.now();
+        seedAreaPermission("EMP-000100", "Laboratorio QC", PermissionStatus.ACTIVO, today);
+        seedAreaPermission("EMP-000104", "Laboratorio QC", PermissionStatus.ACTIVO, today);
+        seedAreaPermission("EMP-000105", "Laboratorio QC", PermissionStatus.ACTIVO, today);
+        seedAreaPermission("EMP-000101", "Sala Blanca B", PermissionStatus.ACTIVO, today);
+        seedAreaPermission("EMP-000106", "Sala Blanca A", PermissionStatus.ACTIVO, today);
+        seedAreaPermission("EMP-000102", "Zona de Empaque", PermissionStatus.ACTIVO, today);
+        seedAreaPermission("EMP-000032", "Zona de Empaque", PermissionStatus.SUSPENDIDO, today);
+        seedAreaPermission("EMP-000103", "Almacén Controlado", PermissionStatus.SUSPENDIDO, today);
+        log.info("Seeded area authorizations for all production areas");
+    }
+
+    private void seedAreaPermission(String employeeCode, String areaName,
+                                    PermissionStatus status, LocalDate today) {
+        Employee employee = employeeRepository.findByEmployeeCode(employeeCode).orElse(null);
+        if (employee == null || !accessPermissionRepository.findByEmployee_Id(employee.getId()).isEmpty()) {
+            return;
+        }
+        ProductionArea area = productionAreaRepository.findByName(areaName).orElse(null);
+        if (area == null) {
+            return;
+        }
+        accessPermissionRepository.save(AccessPermission.builder()
+                .employee(employee).productionArea(area)
+                .status(status)
+                .startDate(today).expirationDate(today.plusYears(1))
+                .startTime(LocalTime.of(6, 0))
+                .endTime(LocalTime.of(22, 0))
+                .build());
+    }
+
+    /**
+     * Sesiones activas (aforos) para el panel de zonas: crea empleados "dentro"
+     * de algunas salas, todos con permiso ACTIVO vigente, para que la ocupación
+     * muestre aforos cargados en varias áreas. Idempotente: solo si no existen
+     * sesiones activas (no compite con el flujo entrada/salida real).
+     */
+    private void seedAccessSessions() {
+        if (!accessSessionRepository.findByExitTimeIsNull().isEmpty()) {
+            log.info("Access sessions already exist — skipping");
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        seedSession("EMP-000001", "Sala Blanca A", now.minusHours(2).minusMinutes(10));
+        seedSession("EMP-000106", "Sala Blanca A", now.minusHours(1).minusMinutes(35));
+        seedSession("EMP-000041", "Sala Blanca B", now.minusHours(3));
+        seedSession("EMP-000101", "Sala Blanca B", now.minusHours(1).minusMinutes(5));
+        seedSession("EMP-000100", "Laboratorio QC", now.minusHours(2).minusMinutes(40));
+        seedSession("EMP-000105", "Laboratorio QC", now.minusMinutes(30));
+        seedSession("EMP-000102", "Zona de Empaque", now.minusHours(1).minusMinutes(50));
+        log.info("Seeded 7 active access sessions across 4 areas");
+    }
+
+    private void seedSession(String employeeCode, String areaName, LocalDateTime entryTime) {
+        Employee employee = employeeRepository.findByEmployeeCode(employeeCode).orElse(null);
+        ProductionArea area = productionAreaRepository.findByName(areaName).orElse(null);
+        if (employee == null || area == null) {
+            return;
+        }
+        if (accessSessionRepository
+                .findByEmployee_IdAndProductionArea_IdAndExitTimeIsNull(employee.getId(), area.getId())
+                .isPresent()) {
+            return;
+        }
+        accessSessionRepository.save(AccessSession.builder()
+                .employee(employee)
+                .productionArea(area)
+                .entryTime(entryTime)
+                .build());
     }
 
     private void saveRichEmployee(String code, String doc, String firstName, String lastName,
@@ -639,21 +729,16 @@ public class DataInitializer implements CommandLineRunner {
      * Siembra alertas de seguridad de ejemplo (sin leer) para que el panel
      * "Alertas de seguridad" del dashboard del admin tenga contenido. Son
      * datos transaccionales: solo se siembran si la tabla está vacía.
+     * Previamente se limpian las alertas ACCESO_NOCTURNO obsoletas (tipo
+     * eliminado de la lógica de negocio) para no romper la deserialización.
      */
     private void seedAccessAlerts() {
+        accessAlertRepository.deleteNocturnalAlerts();
         if (accessAlertRepository.count() > 0) {
             log.info("Access alerts already exist — skipping");
             return;
         }
         LocalDateTime now = LocalDateTime.now();
-        accessAlertRepository.save(AccessAlert.builder()
-                .tipo(AccessAlert.AlertType.ACCESO_NOCTURNO)
-                .severidad(AccessAlert.AlertSeverity.LOW)
-                .employeeCode("EMP-000040")
-                .productionAreaName("Sala Blanca A")
-                .message("Acceso autorizado fuera del horario diurno (00:00-05:00)")
-                .timestamp(now.minusHours(2))
-                .build());
         accessAlertRepository.save(AccessAlert.builder()
                 .tipo(AccessAlert.AlertType.DENEGACIONES_REPETIDAS)
                 .severidad(AccessAlert.AlertSeverity.MEDIUM)
@@ -669,15 +754,7 @@ public class DataInitializer implements CommandLineRunner {
                 .message("Zona Sala Blanca B CERRADA POR EMERGENCIA")
                 .timestamp(now.minusHours(26))
                 .build());
-        accessAlertRepository.save(AccessAlert.builder()
-                .tipo(AccessAlert.AlertType.ACCESO_NOCTURNO)
-                .severidad(AccessAlert.AlertSeverity.LOW)
-                .employeeCode("EMP-000100")
-                .productionAreaName("Laboratorio QC")
-                .message("Acceso autorizado fuera del horario diurno (00:00-05:00)")
-                .timestamp(now.minusDays(1).withHour(2).withMinute(40))
-                .build());
-        log.info("Seeded 4 access alerts");
+        log.info("Seeded 2 access alerts");
     }
 
     private Employee saveEmployee(String code, String doc, String firstName, String lastName,

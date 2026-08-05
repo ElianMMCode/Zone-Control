@@ -8,6 +8,23 @@ export interface ValidateAccessRequest {
 export interface ValidateAccessResponse {
   result: AccessResult;
   message: string;
+  /** Datos del empleado que intentó el ingreso (null si no se pudo resolver). */
+  employeeCode?: string | null;
+  employeeName?: string | null;
+  position?: string | null;
+  department?: string | null;
+  productionAreaName?: string | null;
+}
+
+export interface ExitResponse {
+  result: AccessResult;
+  message: string;
+  employeeCode: string | null;
+  employeeName: string | null;
+  position: string | null;
+  department: string | null;
+  productionAreaName: string;
+  timestamp: string;
 }
 
 export interface ZoneSnapshot {
@@ -29,7 +46,7 @@ export interface AreaOccupancy {
 
 export interface AccessAlertDto {
   id: string;
-  tipo: "ACCESO_NOCTURNO" | "DENEGACIONES_REPETIDAS" | "ZONA_EMERGENCIA" | "ACCESO_FUERA_HORARIO";
+  tipo: "DENEGACIONES_REPETIDAS" | "ZONA_EMERGENCIA";
   severidad: "LOW" | "MEDIUM" | "HIGH";
   employeeCode: string | null;
   productionAreaName: string | null;
@@ -40,7 +57,7 @@ export interface AccessAlertDto {
 
 export type RealtimeEvent =
   | { type: "snapshot"; zones: ZoneSnapshot[]; occupancy: AreaOccupancy[] }
-  | { type: "access.validated"; employeeCode: string; area: string; result: AccessResult; message: string; timestamp: string }
+  | { type: "access.validated"; employeeCode: string; employeeName?: string | null; area: string; result: AccessResult; message: string; timestamp: string }
   | { type: "occupancy.updated"; timestamp: string }
   | { type: "zone.updated"; area: string; emergencyClosed: boolean }
   | { type: "alert.created"; alert: AccessAlertDto };

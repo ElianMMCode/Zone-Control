@@ -109,6 +109,22 @@ class HistoryControllerTest {
     }
 
     @Test
+    void getHistory_defaultSortsByTimestampDesc() throws Exception {
+        // setUp crea registros 2026-07-15 10:30 y 2026-07-16 14:00; sin
+        // parámetro sort el más reciente debe aparecer primero.
+        mockMvc.perform(get("/api/historial")
+                        .param("fechaInicio", "2026-07-01")
+                        .param("fechaFin", "2026-07-31")
+                        .param("page", "0")
+                        .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].timestamp").value("2026-07-16T14:00:00"))
+                .andExpect(jsonPath("$.content[0].result").value("DENIED"))
+                .andExpect(jsonPath("$.content[1].timestamp").value("2026-07-15T10:30:00"))
+                .andExpect(jsonPath("$.content[1].result").value("AUTHORIZED"));
+    }
+
+    @Test
     void getHistory_invalidRange_returns400() throws Exception {
         mockMvc.perform(get("/api/historial")
                         .param("fechaInicio", "2026-08-01")
@@ -124,6 +140,18 @@ class HistoryControllerTest {
                         .param("fechaFin", "2025-01-31"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    void getHistory_filterByArea_returnsOnlyMatching() throws Exception {
+        // setUp crea registros en Sala Blanca A y Sala Blanca B (Control de Calidad).
+        mockMvc.perform(get("/api/historial")
+                        .param("fechaInicio", "2026-07-01")
+                        .param("fechaFin", "2026-07-31")
+                        .param("productionAreaName", "Sala Blanca A"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].productionAreaName").value("Sala Blanca A"));
     }
 
     @Test
@@ -261,7 +289,8 @@ class HistoryControllerTest {
         // +1 permiso ACTIVO y +1 SUSPENDIDO.
         long baseTotal = accessHistoryRepository.findAll().stream()
                 .filter(h -> h.getTimestamp() != null
-                        && h.getTimestamp().toLocalDate().isEqual(LocalDate.now()))
+                        && h.getTimestamp().toLocalDate().isEqual(LocalDate.now())
+                        && h.getResult() != AccessResult.EXIT)
                 .count();
         long baseAutorizados = accessHistoryRepository.findAll().stream()
                 .filter(h -> h.getTimestamp() != null
@@ -329,5 +358,39 @@ class HistoryControllerTest {
                 .andExpect(jsonPath("$.totalPermisosActivos").value(baseActivos + 1))
                 .andExpect(jsonPath("$.totalPermisosSuspendidos").value(baseSuspendidos + 1))
                 .andExpect(jsonPath("$.empleadosConAcceso").value(baseEmpleadosConAcceso + 1));
+    }
+
+    @Test
+    void getStats_excludesExitFromTotal() throws Exception {
+        long baseTotal = accessHistoryRepository.findAll().stream()
+                .filter(h -> h.getTimestamp() != null
+                        && h.getTimestamp().toLocalDate().isEqual(LocalDate.now())
+                        && h.getResult() != AccessResult.EXIT)
+                .count();
+        long baseAutorizados = accessHistoryRepository.findAll().stream()
+                .filter(h -> h.getTimestamp() != null
+                        && h.getTimestamp().toLocalDate().isEqual(LocalDate.now())
+                        && h.getResult() == AccessResult.AUTHORIZED)
+                .count();
+
+        Employee emp = employeeRepository.save(Employee.builder()
+                .employeeCode("EMP-STS-02")
+                .documentType(DocumentType.CC)
+                .documentNumber("900000011")
+                .firstName("Exit")
+                .lastName("Test")
+                .position("Técnico")
+                .department(dept)
+                .status(EmployeeStatus.ACTIVO)
+                .build());
+        accessHistoryRepository.save(AccessHistory.builder()
+                .employee(emp).department(dept.getName()).productionAreaName("Sala Blanca A")
+                .timestamp(LocalDateTime.now()).result(AccessResult.EXIT).build());
+
+        // La salida queda en el historial pero NO suma al KPI "Accesos hoy".
+        mockMvc.perform(get("/api/historial/stats"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalAccesosHoy").value(baseTotal))
+                .andExpect(jsonPath("$.accesosAutorizadosHoy").value(baseAutorizados));
     }
 }

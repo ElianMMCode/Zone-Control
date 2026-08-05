@@ -47,10 +47,15 @@ public class SecurityConfig {
                 // Solo GET; los datos siguen protegidos bajo /api/**.
                 .requestMatchers(HttpMethod.GET, "/", "/index.html", "/assets/**",
                         "/favicon.ico", "/favicon.svg", "/vite.svg", "/*.svg",
-                        "/login", "/configurar-contrasena", "/ajustes",
+                        "/login", "/configurar-contrasena", "/ajustes", "/403",
                         "/personal/**", "/permisos",
                         "/supervisor/**", "/admin/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/permisos/areas",
+                        "/api/permisos/areas/*/empleados", "/api/permisos/areas/*/autorizaciones")
+                    .hasAnyRole("ADMIN", "GESTOR_PERSONAL", "SUPERVISOR_AUDITOR")
+                .requestMatchers(HttpMethod.GET, "/api/personal/departamentos", "/api/personal/sedes")
+                    .hasAnyRole("ADMIN", "GESTOR_PERSONAL", "SUPERVISOR_AUDITOR")
                 .requestMatchers("/api/personal/**", "/api/permisos/**")
                     .hasAnyRole("ADMIN", "GESTOR_PERSONAL")
                 .requestMatchers("/api/access/**")

@@ -52,7 +52,7 @@ public class AccessValidationServiceImpl implements AccessValidationService {
             logAccess(null, area.getName(), AccessResult.DENIED);
             publishValidated(null, area.getName(), AccessResult.DENIED,
                     "ZONA CERRADA POR EMERGENCIA");
-            return new ValidateAccessResponse(AccessResult.DENIED, "ZONA CERRADA POR EMERGENCIA");
+            return buildResponse(AccessResult.DENIED, "ZONA CERRADA POR EMERGENCIA", null);
         }
 
         Employee employee = employeeRepository.findByEmployeeCode(employeeCode).orElse(null);
@@ -60,14 +60,14 @@ public class AccessValidationServiceImpl implements AccessValidationService {
         if (employee == null) {
             logAccess(null, area.getName(), AccessResult.UNREGISTERED);
             publishValidated(null, area.getName(), AccessResult.UNREGISTERED, "NO REGISTRADO");
-            return new ValidateAccessResponse(AccessResult.UNREGISTERED, "NO REGISTRADO");
+            return buildResponse(AccessResult.UNREGISTERED, "NO REGISTRADO", null);
         }
 
         if (employee.getStatus() != EmployeeStatus.ACTIVO) {
             logAccess(employee, area.getName(), AccessResult.DENIED);
             maybeAlertRepeatedDenials(employee);
             publishValidated(employee, area.getName(), AccessResult.DENIED, "INGRESO DENEGADO");
-            return new ValidateAccessResponse(AccessResult.DENIED, "INGRESO DENEGADO");
+            return buildResponse(AccessResult.DENIED, "INGRESO DENEGADO", employee);
         }
 
         boolean hasValidPermission = accessPermissionRepository.hasValidPermission(
@@ -77,7 +77,7 @@ public class AccessValidationServiceImpl implements AccessValidationService {
         if (!hasValidPermission) {
             logAccess(employee, area.getName(), AccessResult.SUSPENDED);
             publishValidated(employee, area.getName(), AccessResult.SUSPENDED, "ACCESO SUSPENDIDO");
-            return new ValidateAccessResponse(AccessResult.SUSPENDED, "ACCESO SUSPENDIDO");
+            return buildResponse(AccessResult.SUSPENDED, "ACCESO SUSPENDIDO", employee);
         }
 
         // Acceso autorizado: cerrar sesión previa (si existe) y abrir una nueva (2.1).
@@ -89,10 +89,22 @@ public class AccessValidationServiceImpl implements AccessValidationService {
                 .build());
 
         logAccess(employee, area.getName(), AccessResult.AUTHORIZED);
-        maybeAlertNocturnalAccess(employee, area.getName());
         publishValidated(employee, area.getName(), AccessResult.AUTHORIZED, "INGRESO AUTORIZADO");
         publishOccupancy();
-        return new ValidateAccessResponse(AccessResult.AUTHORIZED, "INGRESO AUTORIZADO");
+        return buildResponse(AccessResult.AUTHORIZED, "INGRESO AUTORIZADO", employee);
+    }
+
+    private ValidateAccessResponse buildResponse(AccessResult result, String message, Employee employee) {
+        return ValidateAccessResponse.builder()
+                .result(result)
+                .message(message)
+                .employeeCode(employee != null ? employee.getEmployeeCode() : null)
+                .employeeName(employee != null
+                        ? employee.getFirstName() + " " + employee.getLastName() : null)
+                .position(employee != null ? employee.getPosition() : null)
+                .department(employee != null && employee.getDepartment() != null
+                        ? employee.getDepartment().getName() : null)
+                .build();
     }
 
     private void closeOpenSession(java.util.UUID employeeId, java.util.UUID areaId) {
@@ -115,15 +127,6 @@ public class AccessValidationServiceImpl implements AccessValidationService {
         }
     }
 
-    private void maybeAlertNocturnalAccess(Employee employee, String areaName) {
-        LocalTime now = LocalTime.now();
-        if (now.isAfter(LocalTime.MIDNIGHT) && now.isBefore(LocalTime.of(5, 0))) {
-            createAlert(AccessAlert.AlertType.ACCESO_NOCTURNO,
-                    AccessAlert.AlertSeverity.LOW, employee.getEmployeeCode(), areaName,
-                    "Acceso autorizado fuera del horario diurno (00:00-05:00)");
-        }
-    }
-
     private void createAlert(AccessAlert.AlertType tipo, AccessAlert.AlertSeverity severidad,
                              String employeeCode, String areaName, String message) {
         AccessAlert alert = AccessAlert.builder()
@@ -137,12 +140,16 @@ public class AccessValidationServiceImpl implements AccessValidationService {
     }
 
     private void publishValidated(Employee employee, String areaName, AccessResult result, String message) {
-        realtimeEventPublisher.publish("access.validated", Map.of(
-                "employeeCode", employee != null ? employee.getEmployeeCode() : "UNKNOWN",
-                "area", areaName,
-                "result", result.name(),
-                "message", message,
-                "timestamp", LocalDateTime.now().toString()));
+        // HashMap permite valores null (employeeName es null si el empleado no se resuelve).
+        java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("employeeCode", employee != null ? employee.getEmployeeCode() : "UNKNOWN");
+        payload.put("employeeName", employee != null
+                ? employee.getFirstName() + " " + employee.getLastName() : null);
+        payload.put("area", areaName);
+        payload.put("result", result.name());
+        payload.put("message", message);
+        payload.put("timestamp", LocalDateTime.now().toString());
+        realtimeEventPublisher.publish("access.validated", payload);
     }
 
     private void publishOccupancy() {
