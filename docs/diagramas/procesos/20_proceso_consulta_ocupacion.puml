@@ -1,0 +1,45 @@
+@startuml
+title Flujo CU-11b: Consultar la Ocupación en Tiempo Real
+skinparam activity {
+  BackgroundColor LightCyan
+  BorderColor DarkSlateGray
+}
+skinparam swimlane {
+  BorderColor DarkSlateGray
+  BorderThickness 2
+}
+
+|Supervisor / Auditor|
+start
+:Ir a "Zonas en vivo";
+
+|Sistema|
+:Conectar el panel para recibir la información en tiempo real;
+
+:Enviar el estado inicial de las zonas y su ocupación;
+
+|Pantalla|
+:Mostrar cada zona con su aforo total (cuántas personas están dentro);
+
+|Supervisor / Auditor|
+:Seleccionar "Personal / Autorizaciones" en una zona;
+
+|Pantalla|
+:Mostrar la ocupación detallada de la zona\n(quiénes están dentro y desde qué hora);
+
+:Mostrar las pestañas "Empleados asignados" y "Autorizaciones";
+
+:Mostrar los empleados con acceso a la zona\ny sus permisos (vigencia, horario y turnos por día);
+
+|Supervisor / Auditor|
+:Cerrar el panel de la zona;
+
+note right
+  La entrada de una persona se registra desde
+  "Validar Credencial". La salida también se
+  registra allí, en la pestaña "Salida".
+end note
+
+stop
+
+@enduml

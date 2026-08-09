@@ -1,0 +1,47 @@
+@startuml
+title Flujo CU-08: Consultar Historial de Accesos
+skinparam activity {
+  BackgroundColor LightCyan
+  BorderColor DarkSlateGray
+}
+skinparam swimlane {
+  BorderColor DarkSlateGray
+  BorderThickness 2
+}
+
+|Supervisor / Auditor|
+start
+:Ir a "Reportes de Auditoría";
+
+:Seleccionar "Consultar Historial";
+
+|Pantalla|
+:Mostrar el formulario de consulta;
+
+|Supervisor / Auditor|
+:Seleccionar el rango de fechas (obligatorio);
+
+:Aplicar filtros opcionales\n(empleado, departamento, área y resultado);
+
+:Presionar "Consultar";
+
+|Pantalla|
+:Verificar que la fecha de inicio no sea posterior a la de fin;
+
+if (¿Las fechas son válidas?) then (Sí)
+  :Enviar la consulta;
+
+  |Sistema|
+  :Buscar los registros de acceso del período con los filtros;
+
+  |Pantalla|
+  :Mostrar la tabla del historial (fecha, código, empleado, área, departamento y resultado);
+
+  :Ofrecer la opción de exportar (CU-09);
+else (No)
+  :Mostrar el error "Rango de fechas inválido";
+endif
+
+stop
+
+@enduml

@@ -1,0 +1,87 @@
+@startuml
+title Flujo CU-03b: Gestionar Contenido del Módulo Público
+skinparam activity {
+  BackgroundColor LightCyan
+  BorderColor DarkSlateGray
+}
+skinparam swimlane {
+  BorderColor DarkSlateGray
+  BorderThickness 2
+}
+
+|Administrador|
+start
+:Ir a "Contenido Público";
+
+|Pantalla|
+:Mostrar las secciones del contenido público;
+
+|Administrador|
+split
+  :Seleccionar "Información Institucional";
+
+  :Editar la misión, la visión y la descripción;
+
+  :Guardar;
+split again
+  :Seleccionar "Datos de Contacto";
+
+  :Editar teléfonos, correo y redes sociales;
+
+  :Guardar;
+split again
+  :Seleccionar "Sedes";
+
+  :Agregar, editar o eliminar una sede\n(ciudad, dirección y coordenadas);
+
+  :Guardar;
+
+  note right
+    El mapa gráfico está pendiente: la sede
+    se muestra con sus coordenadas.
+  end note
+split again
+  :Seleccionar "Catálogo de Productos";
+
+  :Agregar, editar o eliminar un producto;
+
+  :Guardar;
+split again
+  :Seleccionar "Folleto Informativo";
+
+  |Pantalla|
+  :Mostrar el folleto actual o indicar que no hay uno;
+
+  |Administrador|
+  if (¿Cargar un nuevo folleto?) then (Sí)
+    :Seleccionar el archivo PDF (máximo 10 MB);
+
+    |Pantalla|
+    :Enviar el folleto;
+
+    |Sistema|
+    :Verificar que sea PDF y no supere el tamaño;
+
+    :Guardar el folleto;
+
+    |Pantalla|
+    :Mostrar confirmación;
+
+    :Habilitar la descarga en el sitio público;
+  else (No)
+    if (¿Eliminar el folleto actual?) then (Sí)
+      |Sistema|
+      :Eliminar el folleto;
+
+      |Pantalla|
+      :Ocultar la descarga en el sitio público;
+    endif
+  endif
+end split
+
+|Pantalla|
+:Mostrar confirmación de los cambios;
+
+stop
+
+@enduml

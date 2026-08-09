@@ -1,0 +1,66 @@
+@startuml
+title Flujo CU-03a: Editar Usuario
+skinparam activity {
+  BackgroundColor LightCyan
+  BorderColor DarkSlateGray
+}
+skinparam swimlane {
+  BorderColor DarkSlateGray
+  BorderThickness 2
+}
+
+|Administrador|
+start
+:Ir al panel de administración;
+
+:Seleccionar "Gestionar Usuarios";
+
+|Pantalla|
+:Mostrar la lista de usuarios;
+
+|Administrador|
+:Buscar y seleccionar el usuario;
+
+:Seleccionar "Editar";
+
+|Pantalla|
+:Mostrar el formulario con los datos del usuario;
+
+note right
+  El rol se define al crear el usuario y no se
+  puede cambiar aquí. Nombre, apellido y cargo
+  provienen del empleado vinculado.
+end note
+
+|Administrador|
+:Modificar el correo y/o el estado (activo o inactivo);
+
+:Guardar los cambios;
+
+|Pantalla|
+:Enviar la solicitud;
+
+|Sistema|
+:Verificar que el nuevo correo no esté en uso;
+
+if (¿El correo está disponible?) then (Sí)
+  :Guardar los cambios;
+
+  |Pantalla|
+  :Mostrar confirmación;
+
+  :Actualizar el usuario en la lista;
+
+  |Administrador|
+  :Confirmar la edición;
+else (No)
+  :Informar que ese correo ya está en uso;
+  |Pantalla|
+  :Mostrar el error;
+  |Administrador|
+  :Corregir el correo;
+endif
+
+stop
+
+@enduml

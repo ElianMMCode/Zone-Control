@@ -8,7 +8,9 @@ import laboratorioxyz.com.ZoneControl.model.repository.DepartmentRepository;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.dto.RegisterEmployeeRequest;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.dto.UpdateEmployeeRequest;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.model.Employee;
+import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.model.Position;
 import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.repository.EmployeeRepository;
+import laboratorioxyz.com.ZoneControl.modulo_gestion_personal.repository.PositionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,12 +46,18 @@ class EmployeeSearchControllerTest {
     @Autowired
     private EmployeeRepository employeeRepository;
 
+    @Autowired
+    private PositionRepository positionRepository;
+
     private Department department;
     private Employee seedEmployee;
+    private Position cargo;
 
     @BeforeEach
     void setUp() {
         department = departmentRepository.findByName("Control de Calidad").orElseThrow();
+        cargo = positionRepository.save(Position.builder()
+                .name("Cargo Search " + System.nanoTime()).build());
         seedEmployee = employeeRepository.save(Employee.builder()
                 .employeeCode("EMP-TEST-01")
                 .documentType(DocumentType.CC)
@@ -72,6 +80,30 @@ class EmployeeSearchControllerTest {
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.content[0].firstName").value("Carlos"))
                 .andExpect(jsonPath("$.content[0].lastName").value("Mendoza"))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void searchEmployees_withCargoFilter_returnsOnlyMatching() throws Exception {
+        employeeRepository.save(Employee.builder()
+                .employeeCode("EMP-TEST-02")
+                .documentType(DocumentType.CC)
+                .documentNumber("2222222222")
+                .firstName("Ana")
+                .lastName("Cargo")
+                .position(cargo.getName())
+                .cargo(cargo)
+                .department(department)
+                .status(EmployeeStatus.ACTIVO)
+                .build());
+
+        mockMvc.perform(get("/api/personal")
+                        .param("cargoName", cargo.getName())
+                        .param("page", "0")
+                        .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].firstName").value("Ana"))
+                .andExpect(jsonPath("$.content[0].position").value(cargo.getName()))
                 .andExpect(jsonPath("$.totalElements").value(1));
     }
 
@@ -181,7 +213,7 @@ class EmployeeSearchControllerTest {
     void updateEmployee_validFields_returns200() throws Exception {
         var updateReq = UpdateEmployeeRequest.builder()
                 .firstName("Carlos Alberto")
-                .position("Senior")
+                .cargoId(cargo.getId())
                 .build();
 
         mockMvc.perform(patch("/api/personal/{id}", seedEmployee.getId())
@@ -189,7 +221,7 @@ class EmployeeSearchControllerTest {
                         .content(objectMapper.writeValueAsString(updateReq)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.firstName").value("Carlos Alberto"))
-                .andExpect(jsonPath("$.position").value("Senior"))
+                .andExpect(jsonPath("$.position").value(cargo.getName()))
                 .andExpect(jsonPath("$.lastName").value("Mendoza"));
     }
 

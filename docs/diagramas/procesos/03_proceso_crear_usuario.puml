@@ -1,0 +1,89 @@
+@startuml
+title Flujo CU-03a: Crear Usuario
+skinparam activity {
+  BackgroundColor LightCyan
+  BorderColor DarkSlateGray
+}
+skinparam swimlane {
+  BorderColor DarkSlateGray
+  BorderThickness 2
+}
+
+|Administrador|
+start
+:Ir al panel de administración;
+
+note right
+  <b>Condición previa:</b> la persona debe estar registrada
+  como empleado (HU-09) y tener un correo asociado.
+  El sistema identifica a cada empleado con su código
+  (formato EMP-000001).
+end note
+
+:Seleccionar "Crear Usuario";
+
+|Pantalla|
+:Mostrar el formulario de creación;
+
+|Administrador|
+:Buscar y seleccionar el empleado;
+
+:Elegir el rol que tendrá (Administrador, Gestor o Supervisor);
+
+:Confirmar la creación;
+
+|Pantalla|
+:Enviar la solicitud;
+
+|Sistema|
+:Verificar que el empleado exista;
+
+if (¿El empleado existe?) then (Sí)
+  :Verificar que no tenga un usuario del sistema;
+
+  if (¿No tiene usuario?) then (Sí)
+    :Verificar que el correo no esté en uso;
+
+    if (¿El correo está disponible?) then (Sí)
+      :Crear el usuario sin contraseña;
+
+      :Generar un enlace temporal de activación (24 horas);
+
+      :Informar que el usuario fue creado;
+
+      |Pantalla|
+      :Mostrar el enlace de activación;
+
+      :Abrir la página de configuración en una ventana nueva;
+
+      |Usuario nuevo|
+      :Definir su propia contraseña con el enlace;
+
+      :Ingresar al sistema;
+
+      stop
+    else (No)
+      :Informar que ese correo ya está en uso;
+      |Pantalla|
+      :Mostrar el error;
+      |Administrador|
+      :Elegir otro empleado o corregir el correo;
+    endif
+  else (No)
+    :Informar que el empleado ya tiene un usuario;
+    |Pantalla|
+    :Mostrar el error;
+    |Administrador|
+    :Seleccionar otro empleado;
+  endif
+else (No)
+  :Informar que el empleado no está registrado;
+  |Pantalla|
+  :Mostrar el error;
+  |Administrador|
+  :Verificar el código del empleado;
+endif
+
+stop
+
+@enduml

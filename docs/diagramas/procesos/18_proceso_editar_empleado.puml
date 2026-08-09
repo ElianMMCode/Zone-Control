@@ -1,0 +1,100 @@
+@startuml
+title Flujo CU-07a: Editar Empleado
+skinparam activity {
+  BackgroundColor LightCyan
+  BorderColor DarkSlateGray
+}
+skinparam swimlane {
+  BorderColor DarkSlateGray
+  BorderThickness 2
+}
+
+|Gestor de Personal|
+start
+:Seleccionar al empleado de los resultados de búsqueda;
+
+:Seleccionar "Editar";
+
+|Pantalla|
+:Mostrar el formulario con los datos actuales del empleado\ny el selector de estado (activo, inactivo o suspendido);
+
+|Gestor de Personal|
+:Modificar los campos deseados\n(nombres, apellidos, cargo, documento,\ndepartamento y estado);
+
+:Guardar;
+
+|Pantalla|
+:Enviar la solicitud;
+
+|Sistema|
+if (¿El empleado existe?) then (Sí)
+  :Guardar los campos modificados;
+
+  if (¿Cambió el tipo o número de documento?) then (Sí)
+    :Verificar que el nuevo documento no exista;
+
+    if (¿El documento está disponible?) then (Sí)
+      :Guardar el nuevo documento;
+    else (No)
+      :Informar que ya existe un empleado con ese documento;
+      |Pantalla|
+      :Mostrar el error;
+      stop
+    endif
+  endif
+
+  if (¿El nuevo estado es inactivo o suspendido?) then (Sí)
+    :Suspender automáticamente sus permisos de acceso;
+
+    :Desactivar automáticamente su usuario del sistema, si lo tiene;
+  endif
+
+  :Guardar los cambios;
+
+  |Pantalla|
+  :Mostrar confirmación;
+
+  :Actualizar la fila en la lista;
+
+  |Gestor de Personal|
+  :Confirmar la edición;
+
+  :(Opcional) Cambiar la fotografía;
+  |Pantalla|
+  split
+    :Subir o reemplazar la fotografía;
+  split again
+    :Eliminar la fotografía;
+  end split
+  |Sistema|
+  :Verificar el tipo y el tamaño y guardar o eliminar la foto;
+
+  |Gestor de Personal|
+  :(Opcional) Asignar una nueva área de acceso;
+  |Pantalla|
+  :Mostrar el formulario de permiso (área, fechas, horarios y turnos por día);
+
+  |Sistema|
+  :Verificar que el empleado esté activo y que no tenga\nun permiso para esa área;
+
+  if (¿Todo es válido?) then (Sí)
+    :Guardar el permiso;
+  else (No)
+    :Informar que el empleado ya tiene un permiso para esa área;
+    |Pantalla|
+    :Mostrar el error;
+  endif
+
+  |Gestor de Personal|
+  :(Opcional) Suspender o reactivar un permiso desde el detalle;
+  |Sistema|
+  :Actualizar el estado del permiso;
+else (No)
+  :Informar que el empleado no existe;
+  |Pantalla|
+  :Mostrar el error;
+endif
+
+stop
+
+@enduml

@@ -1,0 +1,54 @@
+@startuml
+title Flujo CU-03a: Activar / Desactivar Usuario
+skinparam activity {
+  BackgroundColor LightCyan
+  BorderColor DarkSlateGray
+}
+skinparam swimlane {
+  BorderColor DarkSlateGray
+  BorderThickness 2
+}
+
+|Administrador|
+start
+:Ir al panel de administración;
+
+:Seleccionar "Gestionar Usuarios";
+
+|Pantalla|
+:Mostrar la lista de usuarios;
+
+|Administrador|
+:Ubicar el usuario;
+
+:Cambiar su estado con el interruptor (activar o desactivar);
+
+|Pantalla|
+:Enviar la solicitud;
+
+|Sistema|
+:Verificar que no se esté desactivando la propia cuenta;
+
+if (¿El cambio es válido?) then (Sí)
+  :Guardar el nuevo estado;
+
+  :Si se desactivó, sus sesiones dejan de ser válidas de inmediato;
+
+  |Pantalla|
+  :Actualizar el estado en la lista;
+
+  :Mostrar confirmación;
+
+  |Administrador|
+  :Confirmar el cambio;
+else (No)
+  :Informar que no se puede desactivar la propia cuenta;
+  |Pantalla|
+  :Revertir el interruptor;
+
+  :Mostrar el error;
+endif
+
+stop
+
+@enduml

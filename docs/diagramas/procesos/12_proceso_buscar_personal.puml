@@ -1,0 +1,53 @@
+@startuml
+title Flujo CU-07: Buscar Personal
+skinparam activity {
+  BackgroundColor LightCyan
+  BorderColor DarkSlateGray
+}
+skinparam swimlane {
+  BorderColor DarkSlateGray
+  BorderThickness 2
+}
+
+|Gestor de Personal|
+start
+:Ir a "Buscar Personal";
+
+|Pantalla|
+:Mostrar el formulario de búsqueda;
+
+|Gestor de Personal|
+:Ingresar los filtros deseados\n(tipo o número de documento, nombre,\napellido, departamento y estado);
+
+note right
+  Todos los filtros son opcionales: si no se
+  elige ninguno, se listan todos los empleados.
+end note
+
+:Presionar "Buscar";
+
+|Pantalla|
+:Enviar la búsqueda;
+
+|Sistema|
+:Buscar a los empleados según los filtros;
+
+|Pantalla|
+:Mostrar la tabla de resultados con paginación;
+
+|Gestor de Personal|
+split
+  :Avanzar de página o ordenar por una columna;
+split again
+  :Seleccionar un empleado para ver su detalle;
+split again
+  :Seleccionar un empleado para editarlo;
+split again
+  :Seleccionar un empleado para gestionar sus permisos;
+end split
+
+:Fin de la búsqueda;
+
+stop
+
+@enduml

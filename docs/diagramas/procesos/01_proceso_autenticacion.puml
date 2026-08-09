@@ -1,0 +1,75 @@
+@startuml
+title Flujo CU-02: Iniciar sesión en el sistema
+skinparam activity {
+  BackgroundColor LightCyan
+  BorderColor DarkSlateGray
+}
+skinparam swimlane {
+  BorderColor DarkSlateGray
+  BorderThickness 2
+}
+
+|Pantalla|
+start
+:Mostrar el formulario de ingreso;
+
+|Usuario|
+:Ingresar el correo y la contraseña;
+
+:Confirmar el ingreso;
+
+|Pantalla|
+if (¿Se completaron todos los campos?) then (Sí)
+  :Enviar la solicitud de ingreso;
+else (No)
+  :Mostrar los campos que faltan;
+  :Permitir corregirlos;
+  stop
+endif
+
+|Sistema|
+:Recibir la solicitud;
+
+:Buscar la cuenta con ese correo;
+
+if (¿La cuenta existe?) then (Sí)
+  :Comparar la contraseña ingresada;
+
+  if (¿La contraseña es correcta?) then (Sí)
+    if (¿La cuenta está activa?) then (Sí)
+      :Registrar el ingreso en el sistema;
+
+      :Informar que el ingreso fue exitoso;
+
+      |Pantalla|
+      :Llevar al usuario a su panel según su rol;
+
+      |Usuario|
+      if (¿El rol es Administrador?) then (Admin)
+        :Mostrar el panel de administración;
+      elseif (¿El rol es Gestor de Personal?) then (Gestor)
+        :Mostrar el panel de gestión de personal;
+      elseif (¿El rol es Supervisor / Auditor?) then (Supervisor)
+        :Mostrar el panel de supervisión;
+      endif
+
+      stop
+    else (No)
+      :Informar que la cuenta está desactivada;
+    endif
+  else (No)
+    :Informar que la contraseña es incorrecta;
+  endif
+else (No)
+  :Informar que no existe una cuenta con ese correo;
+endif
+
+|Pantalla|
+:Mostrar el mensaje de error;
+
+|Usuario|
+:Corregir los datos e intentar de nuevo;
+
+stop
+
+@enduml

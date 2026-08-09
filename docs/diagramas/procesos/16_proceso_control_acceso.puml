@@ -1,0 +1,63 @@
+@startuml
+title Flujo CU-11: Validar la Entrada a un Área Restringida
+skinparam activity {
+  BackgroundColor LightCyan
+  BorderColor DarkSlateGray
+}
+skinparam swimlane {
+  BorderColor DarkSlateGray
+  BorderThickness 2
+}
+
+|Supervisor / Auditor|
+start
+:Ir a "Validar Credencial";
+
+:Seleccionar la pestaña "Entrada";
+
+:Ingresar el código del empleado (EMP-000001…);
+
+:Seleccionar la zona a la que quiere ingresar;
+
+:Confirmar la validación;
+
+|Pantalla|
+:Enviar la solicitud;
+
+|Sistema|
+:Verificar si la zona está cerrada por emergencia;
+
+if (¿La zona está en emergencia?) then (Sí)
+  :Resultado: ingreso denegado por emergencia;
+else (No)
+  :Buscar al empleado por su código;
+
+  if (¿El empleado existe?) then (Sí)
+    :Verificar que el empleado esté activo;
+
+    if (¿El empleado está activo?) then (Sí)
+      :Verificar que tenga un permiso vigente para la zona,\nel horario y el día actuales;
+
+      if (¿El permiso es válido?) then (Sí)
+        :Resultado: ingreso autorizado;
+
+        :Abrir la sesión del empleado en la zona;
+      else (No)
+        :Resultado: acceso suspendido;
+      endif
+    else (No)
+      :Resultado: ingreso denegado;
+    endif
+  else (No)
+    :Resultado: no registrado;
+  endif
+endif
+
+:Guardar el intento en el historial con su resultado y hora;
+
+|Pantalla|
+:Mostrar el resultado y los datos del empleado;
+
+stop
+
+@enduml

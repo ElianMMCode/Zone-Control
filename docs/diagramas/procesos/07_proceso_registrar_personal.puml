@@ -1,0 +1,78 @@
+@startuml
+title Flujo CU-04: Registrar Personal
+skinparam activity {
+  BackgroundColor LightCyan
+  BorderColor DarkSlateGray
+}
+skinparam swimlane {
+  BorderColor DarkSlateGray
+  BorderThickness 2
+}
+
+|Gestor de Personal|
+start
+:Ir a "Gestionar Personal";
+
+:Seleccionar "Registrar Personal";
+
+|Pantalla|
+:Mostrar el formulario de registro;
+
+|Gestor de Personal|
+:Completar los datos del empleado\n(tipo y número de documento,\nnombres, apellidos, cargo,\ndepartamento y estado);
+
+|Pantalla|
+:Verificar que los campos obligatorios estén completos;
+
+:Verificar que el tipo de documento sea válido (CC, CE, TI, PA o RC);
+
+if (¿Los datos son válidos?) then (Sí)
+  :Enviar la solicitud;
+
+  |Sistema|
+  :Recibir los datos;
+
+  :Verificar que no exista otro empleado con el mismo documento;
+
+  if (¿El documento está disponible?) then (Sí)
+    :Asignar automáticamente un código de empleado (EMP-000001…);
+
+    :Guardar al empleado;
+
+    |Pantalla|
+    if (¿Se quiere adjuntar una fotografía? (opcional)) then (Sí)
+      |Gestor de Personal|
+      :Seleccionar la fotografía (JPG, PNG o WebP, hasta 2 MB);
+
+      |Pantalla|
+      :Enviar la fotografía;
+
+      |Sistema|
+      :Verificar el tipo y el tamaño;
+
+      :Guardar la fotografía y asociarla al empleado;
+    else (No)
+    endif
+
+    |Pantalla|
+    :Mostrar el código de empleado asignado;
+
+    |Gestor de Personal|
+    :Confirmar el registro;
+  else (No)
+    :Informar que ya existe un empleado con ese documento;
+    |Pantalla|
+    :Mostrar el error;
+    |Gestor de Personal|
+    :Corregir el tipo o número de documento;
+  endif
+else (No)
+  |Pantalla|
+  :Mostrar los errores de validación;
+  |Gestor de Personal|
+  :Corregir los campos inválidos;
+endif
+
+stop
+
+@enduml

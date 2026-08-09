@@ -1,0 +1,48 @@
+@startuml
+title Flujo CU-06: Revocar Acceso
+skinparam activity {
+  BackgroundColor LightCyan
+  BorderColor DarkSlateGray
+}
+skinparam swimlane {
+  BorderColor DarkSlateGray
+  BorderThickness 2
+}
+
+|Gestor de Personal|
+start
+:Ir a "Gestionar Permisos";
+
+:Buscar al empleado por código o nombre;
+
+|Sistema|
+:Buscar al empleado;
+
+|Gestor de Personal|
+:Seleccionar al empleado;
+
+:Seleccionar "Revocar Acceso";
+
+|Pantalla|
+:Mostrar los permisos del empleado;
+
+|Gestor de Personal|
+:Seleccionar el permiso a revocar;
+
+:Confirmar la revocación (es una acción definitiva);
+
+|Pantalla|
+:Enviar la solicitud;
+
+|Sistema|
+:Eliminar el permiso;
+
+|Pantalla|
+:Mostrar confirmación;
+
+|Gestor de Personal|
+:Confirmar la revocación;
+
+stop
+
+@enduml

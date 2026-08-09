@@ -1,0 +1,60 @@
+@startuml
+title Flujo CU-06: Otorgar Acceso
+skinparam activity {
+  BackgroundColor LightCyan
+  BorderColor DarkSlateGray
+}
+skinparam swimlane {
+  BorderColor DarkSlateGray
+  BorderThickness 2
+}
+
+|Gestor de Personal|
+start
+:Ir a "Gestionar Permisos";
+
+:Buscar al empleado por código o nombre;
+
+|Sistema|
+:Buscar al empleado;
+
+|Gestor de Personal|
+:Seleccionar al empleado;
+
+:Seleccionar "Otorgar Acceso";
+
+:Seleccionar el área a la que tendrá acceso;
+
+:Definir los horarios de acceso (hora de inicio y fin);
+
+:Definir, si se desea, horarios distintos por día de la semana (turnos);
+
+:Definir la fecha de inicio y de vencimiento del permiso;
+
+:Confirmar;
+
+|Pantalla|
+:Enviar la solicitud;
+
+|Sistema|
+:Verificar que el empleado esté activo;
+
+:Verificar que el empleado no tenga ya un permiso para esa área;
+
+if (¿Todo es válido?) then (Sí)
+  :Guardar el permiso;
+
+  |Pantalla|
+  :Mostrar confirmación;
+
+  |Gestor de Personal|
+  :Confirmar el permiso otorgado;
+else (No)
+  :Informar que el empleado ya tiene un permiso para esa área;
+  |Pantalla|
+  :Mostrar el error;
+endif
+
+stop
+
+@enduml

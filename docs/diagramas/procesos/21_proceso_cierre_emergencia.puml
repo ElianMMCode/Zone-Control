@@ -1,0 +1,60 @@
+@startuml
+title Flujo CU-11c: Cerrar Zona por Emergencia
+skinparam activity {
+  BackgroundColor LightCyan
+  BorderColor DarkSlateGray
+}
+skinparam swimlane {
+  BorderColor DarkSlateGray
+  BorderThickness 2
+}
+
+|Supervisor / Auditor|
+start
+:Ir a "Zonas en vivo";
+
+:Seleccionar "Cerrar por emergencia" en una zona;
+
+|Pantalla|
+:Enviar la solicitud;
+
+|Sistema|
+:Marcar la zona como cerrada por emergencia;
+
+:Crear una alerta de emergencia de la zona;
+
+:Actualizar el panel en tiempo real;
+
+|Pantalla|
+:Mostrar la zona en estado de EMERGENCIA;
+
+|Supervisor / Auditor|
+:Intentar validar una entrada en la zona cerrada;
+
+|Sistema|
+:Denegar el ingreso por emergencia y guardarlo en el historial;
+
+|Pantalla|
+:Mostrar la denegación en vivo;
+
+|Supervisor / Auditor|
+:Seleccionar "Reabrir zona";
+
+|Sistema|
+:Marcar la zona como operativa;
+
+:Crear una alerta de reapertura;
+
+:Actualizar el panel en tiempo real;
+
+|Pantalla|
+:Mostrar la zona en estado operativo;
+
+note right
+  Una zona cerrada por emergencia deniega
+  todo ingreso hasta que se reabra.
+end note
+
+stop
+
+@enduml

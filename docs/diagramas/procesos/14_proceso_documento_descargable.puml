@@ -1,0 +1,55 @@
+@startuml
+title Flujo CU-09: Generar Documento Descargable
+skinparam activity {
+  BackgroundColor LightCyan
+  BorderColor DarkSlateGray
+}
+skinparam swimlane {
+  BorderColor DarkSlateGray
+  BorderThickness 2
+}
+
+|Supervisor / Auditor|
+start
+:Consultar el historial (CU-08);
+
+:Seleccionar "Exportar";
+
+|Pantalla|
+:Mostrar las opciones de formato;
+
+|Supervisor / Auditor|
+split
+  :Elegir PDF;
+split again
+  :Elegir Excel;
+split again
+  :Elegir CSV;
+end split
+
+  :Confirmar la exportación;
+
+|Pantalla|
+:Enviar la solicitud;
+
+|Sistema|
+:Obtener los registros del historial consultado;
+
+:Construir el documento con los mismos filtros aplicados;
+
+note right
+  El documento incluye el período, los
+  filtros usados, la tabla de registros y
+  un resumen de resultados.
+end note
+
+:Entregar el archivo para descarga;
+
+|Pantalla|
+:Descargar el archivo;
+
+:Confirmar la descarga;
+
+stop
+
+@enduml

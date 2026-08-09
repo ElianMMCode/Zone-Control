@@ -1,0 +1,85 @@
+@startuml
+title Flujo CU-05: Carga Masiva de Personal
+skinparam activity {
+  BackgroundColor LightCyan
+  BorderColor DarkSlateGray
+}
+skinparam swimlane {
+  BorderColor DarkSlateGray
+  BorderThickness 2
+}
+
+|Gestor de Personal|
+start
+:Ir a "Carga Masiva";
+
+|Pantalla|
+:Mostrar la pantalla de carga;
+
+|Gestor de Personal|
+split
+  :Descargar la plantilla con el formato permitido;
+
+  |Sistema|
+  :Entregar la plantilla con sus columnas\ny un ejemplo;
+
+  |Gestor de Personal|
+  :Llenar la plantilla con los datos del personal;
+split again
+  :Seleccionar un archivo ya preparado;
+end split
+
+:Subir el archivo;
+
+|Sistema|
+:Recibir el archivo;
+
+:Verificar que sea del tipo permitido (CSV o TXT) y que no supere los 10 MB;
+
+if (¿El archivo es válido?) then (Sí)
+  :Leer el contenido;
+
+  :Verificar que las columnas sean las de la plantilla\n(tipo de documento, número, nombres, apellidos,\ncargo, departamento, estado y fecha de ingreso);
+
+  if (¿Las columnas son correctas?) then (Sí)
+    :Revisar cada fila;
+
+    while (¿Quedan filas por revisar?) is (Sí)
+      :Verificar el tipo de documento (CC, CE, TI, PA, RC);
+
+      :Verificar que el documento no esté duplicado en el archivo ni ya exista en el sistema;
+
+      :Verificar que los campos obligatorios estén completos;
+
+      :Verificar que el departamento exista;
+
+      if (¿La fila es válida?) then (Sí)
+        :Marcarla como válida;
+      else (No)
+        :Marcarla como inválida y guardar el motivo;
+      endif
+    endwhile (No)
+
+    :Registrar a los empleados válidos asignando su código (EMP-000001…);
+
+    |Pantalla|
+    :Mostrar el resumen (total, registrados y errores);
+
+    :Mostrar la tabla con los errores de cada fila;
+
+    |Gestor de Personal|
+    :Corregir las filas con errores y volver a subir si se desea;
+  else (No)
+    :Informar que las columnas no coinciden con la plantilla;
+    |Pantalla|
+    :Mostrar el error;
+  endif
+else (No)
+  :Informar que el archivo no es del tipo permitido o supera el tamaño máximo;
+  |Pantalla|
+  :Mostrar el error;
+endif
+
+stop
+
+@enduml

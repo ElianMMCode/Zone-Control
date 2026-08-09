@@ -1,0 +1,67 @@
+@startuml
+title Flujo CU-06: Suspender Acceso
+skinparam activity {
+  BackgroundColor LightCyan
+  BorderColor DarkSlateGray
+}
+skinparam swimlane {
+  BorderColor DarkSlateGray
+  BorderThickness 2
+}
+
+|Gestor de Personal|
+start
+:Ir a "Gestionar Permisos";
+
+:Buscar al empleado por código o nombre;
+
+|Sistema|
+:Buscar al empleado;
+
+|Gestor de Personal|
+:Seleccionar al empleado;
+
+:Seleccionar "Suspender Acceso";
+
+|Pantalla|
+:Mostrar los permisos del empleado;
+
+|Gestor de Personal|
+:Seleccionar el permiso a suspender;
+
+:Definir la fecha en que se podrá reactivar;
+
+:Confirmar la suspensión;
+
+|Pantalla|
+:Enviar la solicitud;
+
+|Sistema|
+:Marcar el permiso como suspendido;
+
+:Guardar la fecha de reactivación;
+
+|Pantalla|
+:Mostrar confirmación;
+
+|Gestor de Personal|
+:Confirmar la suspensión;
+
+split
+  :(Opcional) Reactivar el permiso antes de la fecha prevista;
+  :Confirmar la reactivación;
+  |Sistema|
+  :Marcar el permiso como activo y limpiar la fecha de reactivación;
+split again
+  :(Opcional) Editar las fechas u horarios del permiso;
+end split
+
+note right
+  El sistema NO reactiva permisos de forma
+  automática. La reactivación es manual, o
+  se aplica al reactivar al empleado.
+end note
+
+stop
+
+@enduml

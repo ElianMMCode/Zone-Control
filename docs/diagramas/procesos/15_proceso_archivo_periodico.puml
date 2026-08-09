@@ -1,0 +1,71 @@
+@startuml
+title Flujo CU-10: Archivo Periódico para el Socio Internacional
+skinparam activity {
+  BackgroundColor LightCyan
+  BorderColor DarkSlateGray
+}
+skinparam swimlane {
+  BorderColor DarkSlateGray
+  BorderThickness 2
+}
+
+|Supervisor / Auditor|
+start
+:Ir a "Reportes de Auditoría";
+
+:Seleccionar "Archivo Periódico";
+
+|Pantalla|
+:Mostrar la configuración del reporte;
+
+|Supervisor / Auditor|
+:Seleccionar el mes y el año del período;
+
+:Seleccionar, si se desea, los departamentos a incluir;
+
+:Elegir el formato (PDF, Excel o CSV);
+
+:Presionar "Generar";
+
+|Pantalla|
+:Enviar la solicitud;
+
+|Sistema|
+:Buscar los accesos (ingresos) del período;
+
+:Agruparlos por departamento y área;
+
+:Calcular totales, autorizados, denegados, no registrados,\nsuspendidos y el porcentaje de autorizados;
+
+:Calcular la distribución de accesos por día;
+
+note right
+  SIN DATOS PERSONALES: el archivo no incluye
+  nombres, documentos ni códigos de empleados.
+  Contiene dos secciones: (1) resumen por
+  departamento y área, y (2) distribución por día.
+end note
+
+:Generar el archivo;
+
+|Pantalla|
+:Mostrar la opción "Enviar a Socio Internacional";
+
+|Supervisor / Auditor|
+:Seleccionar "Enviar a Socio Internacional";
+
+|Pantalla|
+:Mostrar la vista previa del archivo;
+
+:Descargar el archivo para adjuntarlo y compartirlo con el socio;
+
+note right
+  El envío externo queda fuera del sistema:
+  aquí solo se genera y descarga el archivo.
+end note
+
+:Confirmar la generación;
+
+stop
+
+@enduml
